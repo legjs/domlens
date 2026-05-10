@@ -1,38 +1,83 @@
 import { create } from "zustand"
-import type { CompressedContext } from "~shared/types"
+import type { ElementInfo, CompressedContext } from "~shared/types"
 
-interface InspectorState {
-  isEnabled: boolean
-  selectedElement: CompressedContext | null
-  isInspecting: boolean
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Summary of a selected element shown in the Popup UI */
+export interface SelectedElementDisplay {
+  tag: string
+  className: string
+  id: string
+  text: string
+  size?: string
+  position?: string
+  componentName?: string
+}
+
+interface PopupState {
+  // Inspector toggle
+  inspectorActive: boolean
+
+  // Selected element data
+  selectedElement: SelectedElementDisplay | null
+  compressedContext: CompressedContext | null
+
+  // Prompt & clipboard
+  promptText: string
+  copied: boolean
 
   // Actions
-  toggleInspector: () => void
-  setInspecting: (value: boolean) => void
-  setSelectedElement: (element: CompressedContext | null) => void
+  setInspectorActive: (active: boolean) => void
+  setSelectedElement: (info: ElementInfo) => void
+  setCompressedContext: (context: CompressedContext | null) => void
+  setPromptText: (text: string) => void
+  setCopied: (value: boolean) => void
   reset: () => void
 }
 
-const useInspectorStore = create<InspectorState>((set) => ({
-  isEnabled: false,
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+
+const usePopupStore = create<PopupState>((set) => ({
+  inspectorActive: false,
   selectedElement: null,
-  isInspecting: false,
+  compressedContext: null,
+  promptText: "",
+  copied: false,
 
-  toggleInspector: () =>
-    set((state) => ({ isEnabled: !state.isEnabled })),
+  setInspectorActive: (active: boolean) =>
+    set({ inspectorActive: active }),
 
-  setInspecting: (value: boolean) =>
-    set({ isInspecting: value }),
+  setSelectedElement: (info: ElementInfo) =>
+    set({
+      selectedElement: {
+        tag: info.tagName,
+        className: info.className,
+        id: info.id,
+        text: info.innerText,
+      },
+    }),
 
-  setSelectedElement: (element) =>
-    set({ selectedElement: element }),
+  setCompressedContext: (context: CompressedContext | null) =>
+    set({ compressedContext: context }),
+
+  setPromptText: (text: string) =>
+    set({ promptText: text }),
+
+  setCopied: (value: boolean) =>
+    set({ copied: value }),
 
   reset: () =>
     set({
-      isEnabled: false,
+      inspectorActive: false,
       selectedElement: null,
-      isInspecting: false,
+      compressedContext: null,
+      promptText: "",
+      copied: false,
     }),
 }))
 
-export default useInspectorStore
+export default usePopupStore

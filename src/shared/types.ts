@@ -98,3 +98,67 @@ export interface PromptTemplate {
   suggestions: string[];
   generatedMarkdown: string;
 }
+
+// ============================================================
+// Server-side types for Runtime API
+// ============================================================
+
+/**
+ * ContextEntry - A stored context capture entry.
+ * Each entry represents one element inspection snapshot, persisted
+ * on the local Runtime server with a unique ID and timestamp.
+ */
+export interface ContextEntry {
+  /** Unique identifier (UUID) for this context entry */
+  id: string;
+  /** Unix timestamp (ms) when the context was captured */
+  timestamp: number;
+  /** URL of the page where the context was captured */
+  url: string;
+  /** Title of the page where the context was captured */
+  pageTitle?: string;
+  /** The compressed context data for the inspected element */
+  context: CompressedContext;
+}
+
+/**
+ * ContextCapturePayload - Message payload sent from the content script
+ * to the background script when a context is captured.
+ */
+export interface ContextCapturePayload {
+  /** The compressed context data from the element inspector */
+  context: CompressedContext;
+  /** URL of the page where the context was captured */
+  url: string;
+  /** Title of the page where the context was captured */
+  pageTitle?: string;
+}
+
+/**
+ * ApiResponse - Standardized REST API response wrapper.
+ * All Runtime server endpoints use this shape for consistency.
+ *
+ * @typeparam T - The type of the `data` field on success responses.
+ */
+export interface ApiResponse<T = unknown> {
+  /** Whether the request succeeded */
+  success: boolean;
+  /** Response payload on success */
+  data?: T;
+  /** Error message on failure */
+  error?: string;
+  /** Server-side timestamp (ms) of when the response was created */
+  timestamp: number;
+}
+
+/**
+ * ServerConfig - Configuration options for the local Runtime server.
+ */
+export interface ServerConfig {
+  /** Port number the HTTP server listens on */
+  port: number;
+  /** Maximum number of context entries retained in history */
+  maxHistorySize: number;
+  /** Allowed CORS origin (used in Access-Control-Allow-Origin header) */
+  corsOrigin: string;
+}

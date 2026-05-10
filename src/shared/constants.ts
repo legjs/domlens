@@ -243,3 +243,16 @@ export const DISPLAY_VALUES = [
   'table-cell',
   'none'
 ] as const;
+
+// ============================================================
+// Runtime Server Configuration
+// ============================================================
+
+/** Default port for the local Runtime API server */
+export const SERVER_DEFAULT_PORT = 3777;
+
+/** Base URL for the local Runtime API server */
+export const SERVER_URL = `http://localhost:${SERVER_DEFAULT_PORT}`;
+
+/** Maximum number of context entries stored on the server */
+export const MAX_CONTEXT_HISTORY = 20;

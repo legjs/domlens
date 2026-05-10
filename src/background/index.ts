@@ -8,12 +8,15 @@
  *   Popup  --[TOGGLE_INSPECTOR]--> Background --[TOGGLE_INSPECTOR]--> Content
  *   Content --[ELEMENT_SELECTED]--> Background --[ELEMENT_SELECTED]--> Popup
  *   Content --[INSPECTOR_STATUS]--> Background --[INSPECTOR_STATUS]--> Popup
+ *   Content --[CONTEXT_CAPTURED]--> Background --[HTTP POST]--> Runtime Server
  *
  * Lifecycle note (Manifest V3):
  *   The service worker is stateless — it can be terminated at any time by Chrome.
  *   Inspector state stored here is in-memory only and survives while the SW lives.
  *   For persistent state across SW restarts, use chrome.storage (future enhancement).
  */
+
+import { SERVER_URL } from "../shared/constants"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,6 +27,7 @@ type MessageType =
   | "TOGGLE_INSPECTOR"
   | "ELEMENT_SELECTED"
   | "INSPECTOR_STATUS"
+  | "CONTEXT_CAPTURED"
 
 interface ExtensionMessage {
   type: MessageType
@@ -77,6 +81,10 @@ chrome.runtime.onMessage.addListener(
       case "INSPECTOR_STATUS":
         handleInspectorStatus(message, sender, sendResponse)
         return false
+
+      case "CONTEXT_CAPTURED":
+        handleContextCaptured(message, sender, sendResponse)
+        return true // async response
 
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
@@ -201,6 +209,52 @@ function handleInspectorStatus(
   }
 
   sendResponse({ success: true })
+}
+
+/**
+ * CONTEXT_CAPTURED — Content Script → Background → Runtime Server
+ *
+ * The content script sends this when a user clicks on an element.
+ * We forward the compressed context payload to the local Runtime server
+ * via HTTP POST for storage and later retrieval by the MCP server.
+ */
+async function handleContextCaptured(
+  message: ExtensionMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): Promise<void> {
+  const payload = message.payload as
+    | { context: unknown; url: string; pageTitle?: string }
+    | undefined
+
+  if (!payload || !payload.context || !payload.url) {
+    sendResponse({ success: false, error: "Invalid CONTEXT_CAPTURED payload" })
+    return
+  }
+
+  try {
+    const response = await fetch(`${SERVER_URL}/api/context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      console.warn(
+        "[AI Runtime Inspector] Server returned status:",
+        response.status
+      )
+    }
+
+    sendResponse({ success: true })
+  } catch (err) {
+    // Server not running — silent fail
+    console.warn(
+      "[AI Runtime Inspector] Cannot reach runtime server:",
+      err instanceof Error ? err.message : String(err)
+    )
+    sendResponse({ success: false, error: "Runtime server not available" })
+  }
 }
 
 // ---------------------------------------------------------------------------

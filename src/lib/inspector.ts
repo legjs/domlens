@@ -13,6 +13,7 @@
 
 import type { ElementInfo } from "~shared/types"
 import { SENSITIVE_SELECTORS, DEFAULT_CONFIG } from "~shared/constants"
+import { compressContext } from "~lib/compressor"
 import {
   showOverlay,
   showSelectedOverlay,
@@ -205,6 +206,23 @@ function handleClick(e: MouseEvent): void {
   // Build lightweight ElementInfo and emit
   const elementInfo = buildElementInfo(target)
   notifyElementSelected(elementInfo)
+
+  // Generate CompressedContext and forward to background for server delivery
+  try {
+    if (target instanceof HTMLElement) {
+      const compressed = compressContext(target)
+      chrome.runtime.sendMessage({
+        type: "CONTEXT_CAPTURED",
+        payload: {
+          context: compressed,
+          url: window.location.href,
+          pageTitle: document.title,
+        },
+      })
+    }
+  } catch (err) {
+    console.warn("[AI Runtime Inspector] Failed to compress context:", err)
+  }
 }
 
 /**

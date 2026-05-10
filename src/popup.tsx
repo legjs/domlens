@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef, useState } from "react"
 import "~src/style.css"
 import usePopupStore, { loadPersistedState } from "~store"
 import type { ElementInfo } from "~shared/types"
+import { SERVER_URL } from "~shared/constants"
 
 function IndexPopup() {
   const {
@@ -9,10 +10,12 @@ function IndexPopup() {
     selectedElement,
     promptText,
     copied,
+    serverConnected,
     setInspectorActive,
     setSelectedElement,
     setPromptText,
     setCopied,
+    setServerConnected,
   } = usePopupStore()
 
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -58,6 +61,23 @@ function IndexPopup() {
     chrome.runtime.onMessage.addListener(handleMessage)
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
   }, [setSelectedElement, setInspectorActive, setPromptText])
+
+  // Server health check - on mount and every 5 seconds
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/health`, {
+          signal: AbortSignal.timeout(2000),
+        })
+        setServerConnected(res.ok)
+      } catch {
+        setServerConnected(false)
+      }
+    }
+    checkServer()
+    const interval = setInterval(checkServer, 5000)
+    return () => clearInterval(interval)
+  }, [setServerConnected])
 
   const handleToggle = useCallback(async () => {
     const newState = !inspectorActive
@@ -110,10 +130,14 @@ function IndexPopup() {
 
   return (
     <div className="w-80 min-h-[200px] flex flex-col">
-      <header className="px-4 py-3 border-b border-[#2a2a4a]">
+      <header className="px-4 py-3 border-b border-[#2a2a4a] flex items-center justify-between">
         <h1 className="text-sm font-semibold text-[#e0e0e0] tracking-wide">
           AI Runtime Inspector
         </h1>
+        <span className="flex items-center gap-1">
+          <span className={serverConnected ? "w-2 h-2 rounded-full bg-green-400" : "w-2 h-2 rounded-full bg-red-400"} />
+          <span className="text-xs text-[#888] ml-1">Runtime</span>
+        </span>
       </header>
 
       <div className="px-4 py-4">

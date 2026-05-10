@@ -21,12 +21,14 @@ interface PopupState {
   compressedContext: CompressedContext | null
   promptText: string
   copied: boolean
+  serverConnected: boolean
 
   setInspectorActive: (active: boolean) => void
   setSelectedElement: (info: ElementInfo) => void
   setCompressedContext: (context: CompressedContext | null) => void
   setPromptText: (text: string) => void
   setCopied: (value: boolean) => void
+  setServerConnected: (connected: boolean) => void
   reset: () => void
 }
 
@@ -70,6 +72,7 @@ const usePopupStore = create<PopupState>((set) => ({
   compressedContext: null,
   promptText: "",
   copied: false,
+  serverConnected: false,
 
   setInspectorActive: (active: boolean) => {
     set({ inspectorActive: active })
@@ -98,6 +101,9 @@ const usePopupStore = create<PopupState>((set) => ({
   setCopied: (value: boolean) =>
     set({ copied: value }),
 
+  setServerConnected: (connected: boolean) =>
+    set({ serverConnected: connected }),
+
   reset: () =>
     set({
       inspectorActive: false,
@@ -105,6 +111,7 @@ const usePopupStore = create<PopupState>((set) => ({
       compressedContext: null,
       promptText: "",
       copied: false,
+      serverConnected: false,
     }),
 }))
 

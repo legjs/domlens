@@ -18,7 +18,7 @@ import {
   showSelectedOverlay,
   hideOverlay,
   destroyOverlay,
-} from "~content/overlay"
+} from "~lib/overlay"
 
 // ---------------------------------------------------------------------------
 // State

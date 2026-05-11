@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "dom-context": {
+      "command": "npx",
+      "args": ["tsx", "src/server/index.ts"],
+      "cwd": "."
+    }
+  }
+}

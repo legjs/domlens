@@ -1,33 +1,37 @@
 /**
  * Runtime Server Entry Point
  *
- * Starts the HTTP server on the configured port and sets up
- * graceful shutdown handling for process signals.
+ * Dual-mode process:
+ * - Terminal (stdin is TTY): starts HTTP server only
+ * - Claude Code / MCP client (stdin is NOT TTY): starts HTTP + MCP server
  *
- * MCP Server (stdio transport) will be integrated in a future task.
+ * Both modes share the same in-memory ContextStore.
  */
 
 import { startServer } from './express';
+import { startMcpServer } from './mcp';
 import { SERVER_DEFAULT_PORT } from '../shared/constants';
 
 // --- Environment ---
 const PORT = parseInt(process.env.PORT || String(SERVER_DEFAULT_PORT), 10);
+const isStdio = !process.stdin.isTTY;
 
 // --- Start HTTP Server ---
 startServer(PORT).then(() => {
-  console.log(`[Runtime Server] Context API available at http://localhost:${PORT}`);
+  console.error(`[Runtime Server] Context API at http://localhost:${PORT}`);
 });
 
-// --- MCP Server (stdio) ---
-// MCP server will be integrated in Task 8.
-// When Claude Code launches this process via stdio, stdin will NOT be a TTY.
-// If stdin is a TTY (terminal) -> only start HTTP server.
-// If stdin is NOT a TTY (pipe/stdio) -> also start MCP server.
-// Currently only the HTTP server is started here.
+// --- Start MCP Server (if launched by an MCP client) ---
+if (isStdio) {
+  startMcpServer().catch((err) => {
+    console.error('[Runtime Server] MCP server failed to start:', err);
+    process.exit(1);
+  });
+}
 
 // --- Graceful Shutdown ---
 function shutdown(signal: string) {
-  console.log(`[Runtime Server] Received ${signal}, shutting down...`);
+  console.error(`[Runtime Server] Received ${signal}, shutting down...`);
   process.exit(0);
 }
 

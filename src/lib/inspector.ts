@@ -143,14 +143,26 @@ function onKeyDown(e: KeyboardEvent): void {
     recomputeActivation()
     return
   }
-  if (!inspectActive) return
-  if (e.key === "Escape") {
+  // ESC: remove last selection in multi-select, clear all in single-select
+  if (e.key === "Escape" && selections.size > 0) {
     e.preventDefault()
     e.stopPropagation()
-    toggleActive = false
-    clearSelections()
-    deactivateInspect()
+    if (selections.size === 1) {
+      toggleActive = false
+      clearSelections()
+      deactivateInspect()
+    } else {
+      // Remove the most recently added selection
+      const lastKey = Array.from(selections.keys()).pop()!
+      selections.delete(lastKey)
+      removeSelectedOverlay(lastKey)
+      cachedOverlayIds = new Set(getAllOverlayIds())
+      notifyMultiSelected()
+      updatePanel()
+    }
+    return
   }
+  if (!inspectActive) return
 }
 
 function onKeyUp(e: KeyboardEvent): void {

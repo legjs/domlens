@@ -16,7 +16,7 @@
  *   For persistent state across SW restarts, use chrome.storage (future enhancement).
  */
 
-import { SERVER_URL } from "../shared/constants"
+import { SERVER_PORT_RANGE, SK_SERVER_PORT } from "../shared/constants"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,6 +40,31 @@ interface ExtensionMessage {
 
 /** Whether the inspector is currently active on any tab */
 let inspectorActive = false
+
+/** Cached server port discovered via probing */
+let cachedPort: number | null = null
+
+async function discoverServerPort(): Promise<number | null> {
+  if (cachedPort !== null) return cachedPort
+  try {
+    const r = await chrome.storage.local.get(SK_SERVER_PORT)
+    if (r[SK_SERVER_PORT]) {
+      cachedPort = r[SK_SERVER_PORT]
+      return cachedPort
+    }
+  } catch { /* ignore */ }
+  for (const port of SERVER_PORT_RANGE) {
+    try {
+      const res = await fetch('http://localhost:' + port + '/api/health', { signal: AbortSignal.timeout(500) })
+      if (res.ok) {
+        cachedPort = port
+        try { await chrome.storage.local.set({ [SK_SERVER_PORT]: port }) } catch { /* ignore */ }
+        return port
+      }
+    } catch { /* next */ }
+  }
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // Extension lifecycle
@@ -233,7 +258,12 @@ async function handleContextCaptured(
   }
 
   try {
-    const response = await fetch(`${SERVER_URL}/api/context`, {
+    const port = await discoverServerPort()
+    if (!port) {
+      sendResponse({ success: false, error: "Runtime server not available" })
+      return
+    }
+    const response = await fetch(`http://localhost:${port}/api/context`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

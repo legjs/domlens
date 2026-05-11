@@ -11,7 +11,6 @@ import type {
   ApiResponse,
   ContextEntry,
 } from '../shared/types';
-import { SERVER_DEFAULT_PORT } from '../shared/constants';
 
 /**
  * Create and configure the Express application with all middleware and routes.
@@ -145,18 +144,4 @@ export function createApp(): Express {
   });
 
   return app;
-}
-
-/**
- * Start the server on the default port.
- * Exported for use by `runtime:start` / `runtime:dev` scripts.
- */
-export function startServer(port: number = SERVER_DEFAULT_PORT) {
-  const app = createApp();
-  return new Promise<void>((resolve) => {
-    app.listen(port, () => {
-      console.log(`Runtime server listening on http://localhost:${port}`);
-      resolve();
-    });
-  });
 }

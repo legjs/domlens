@@ -248,11 +248,18 @@ export const DISPLAY_VALUES = [
 // Runtime Server Configuration
 // ============================================================
 
-/** Default port for the local Runtime API server */
-export const SERVER_DEFAULT_PORT = 3777;
+/** Port range for the local Runtime API server (auto-discovery) */
+export const SERVER_PORT_START = 4777;
+export const SERVER_PORT_END = 4787;
 
-/** Base URL for the local Runtime API server */
-export const SERVER_URL = `http://localhost:${SERVER_DEFAULT_PORT}`;
+/** Pre-computed port array for probing [4777, 4778, ..., 4787] */
+export const SERVER_PORT_RANGE: readonly number[] = Array.from(
+  { length: SERVER_PORT_END - SERVER_PORT_START + 1 },
+  (_, i) => SERVER_PORT_START + i,
+);
 
 /** Maximum number of context entries stored on the server */
 export const MAX_CONTEXT_HISTORY = 20;
+
+/** chrome.storage key for caching the discovered server port */
+export const SK_SERVER_PORT = "runtime_server_port";

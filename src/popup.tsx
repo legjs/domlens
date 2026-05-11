@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef, useState } from "react"
 import "~src/style.css"
 import usePopupStore, { loadPersistedState } from "~store"
 import type { ElementInfo } from "~shared/types"
-import { SERVER_URL } from "~shared/constants"
+import { SERVER_PORT_RANGE, SK_SERVER_PORT } from "~shared/constants"
 
 function IndexPopup() {
   const {
@@ -10,12 +10,12 @@ function IndexPopup() {
     selectedElement,
     promptText,
     copied,
-    serverConnected,
+    serverPort,
     setInspectorActive,
     setSelectedElement,
     setPromptText,
     setCopied,
-    setServerConnected,
+    setServerPort,
   } = usePopupStore()
 
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -62,22 +62,34 @@ function IndexPopup() {
     return () => chrome.runtime.onMessage.removeListener(handleMessage)
   }, [setSelectedElement, setInspectorActive, setPromptText])
 
-  // Server health check - on mount and every 5 seconds
+  // Server port discovery - probe on mount and every 5 seconds
   useEffect(() => {
-    const checkServer = async () => {
+    const probeServer = async () => {
       try {
-        const res = await fetch(`${SERVER_URL}/api/health`, {
-          signal: AbortSignal.timeout(2000),
-        })
-        setServerConnected(res.ok)
-      } catch {
-        setServerConnected(false)
+        const r = await chrome.storage.local.get(SK_SERVER_PORT)
+        if (r[SK_SERVER_PORT]) {
+          try {
+            const res = await fetch("http://localhost:" + r[SK_SERVER_PORT] + "/api/health", { signal: AbortSignal.timeout(1000) })
+            if (res.ok) { setServerPort(r[SK_SERVER_PORT]); return }
+          } catch { /* stale cache */ }
+        }
+      } catch { /* ignore */ }
+      for (const port of SERVER_PORT_RANGE) {
+        try {
+          const res = await fetch("http://localhost:" + port + "/api/health", { signal: AbortSignal.timeout(500) })
+          if (res.ok) {
+            setServerPort(port)
+            try { await chrome.storage.local.set({ [SK_SERVER_PORT]: port }) } catch { /* ignore */ }
+            return
+          }
+        } catch { /* next port */ }
       }
+      setServerPort(null)
     }
-    checkServer()
-    const interval = setInterval(checkServer, 5000)
+    probeServer()
+    const interval = setInterval(probeServer, 5000)
     return () => clearInterval(interval)
-  }, [setServerConnected])
+  }, [setServerPort])
 
   const handleToggle = useCallback(async () => {
     const newState = !inspectorActive
@@ -135,8 +147,8 @@ function IndexPopup() {
           AI Runtime Inspector
         </h1>
         <span className="flex items-center gap-1">
-          <span className={serverConnected ? "w-2 h-2 rounded-full bg-green-400" : "w-2 h-2 rounded-full bg-red-400"} />
-          <span className="text-xs text-[#888] ml-1">Runtime</span>
+          <span className={serverPort ? "w-2 h-2 rounded-full bg-green-400" : "w-2 h-2 rounded-full bg-red-400"} />
+          <span className="text-xs text-[#888] ml-1">{serverPort ? ":" + serverPort : "Runtime"}</span>
         </span>
       </header>
 

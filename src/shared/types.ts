@@ -6,6 +6,26 @@ export interface ElementInfo {
   innerText: string;
 }
 
+// Accessibility Information
+export interface AccessibilityInfo {
+  role: string;
+  ariaLabel: string | null;
+  ariaDescribedBy: string | null;
+  ariaHidden: string | null;
+  tabIndex: string | null;
+  isFocusable: boolean;
+  isInteractive: boolean;
+}
+
+// Shortcut Configuration
+export interface ShortcutConfig {
+  inspectKey: "Alt" | "Shift" | "Control";
+  multiSelectKey: "Control" | "Meta";
+  inspectRequiresShortcut: boolean;
+  panelVisible: boolean;
+  showInlinePrompt: boolean;
+}
+
 // Box Model from getBoundingClientRect
 export interface BoxModel {
   width: number;
@@ -75,6 +95,10 @@ export interface CompressedContext {
     text?: string;
     rect: BoxModel;
     styles?: ComputedStyle;
+    cssSelector?: string;
+    xpath?: string;
+    html?: string;
+    accessibility?: AccessibilityInfo;
   };
   layoutChain: LayoutNode[];
   possibleIssues: ConstraintIssue[];
@@ -132,6 +156,42 @@ export interface ContextCapturePayload {
   url: string;
   /** Title of the page where the context was captured */
   pageTitle?: string;
+  /** Tab ID for isolation between tabs */
+  tabId?: number;
+}
+
+/**
+ * SelectedContext - A single element selected by the user in multi-select mode.
+ * Includes an auto-assigned letter label and optional user description.
+ */
+export interface SelectedContext {
+  /** Unique identifier for this selection (UUID) */
+  id: string;
+  /** Auto-assigned letter label (A, B, C, ...) */
+  label: string;
+  /** User-defined description for this element */
+  description: string;
+  /** Lightweight element info */
+  elementInfo: ElementInfo;
+  /** Compressed context data */
+  context: CompressedContext;
+  /** URL of the page */
+  url: string;
+  /** Page title */
+  pageTitle?: string;
+  /** Tab ID for isolation */
+  tabId?: number;
+}
+
+/**
+ * MultiSelectMessage - Message sent when multiple elements are selected.
+ */
+export interface MultiSelectMessage {
+  type: "MULTI_ELEMENTS_SELECTED";
+  payload: {
+    contexts: SelectedContext[];
+    tabId?: number;
+  };
 }
 
 /**

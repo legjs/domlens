@@ -1,19 +1,16 @@
 /**
  * Background Service Worker
  *
- * Central message hub for the AI Runtime Inspector extension.
- * Routes messages between the popup, content scripts, and future MCP server.
+ * Central message hub for the DOM Context extension.
+ * Routes messages between the popup, content scripts, and runtime server.
  *
  * Communication flow:
- *   Popup  --[TOGGLE_INSPECTOR]--> Background --[TOGGLE_INSPECTOR]--> Content
- *   Content --[ELEMENT_SELECTED]--> Background --[ELEMENT_SELECTED]--> Popup
- *   Content --[INSPECTOR_STATUS]--> Background --[INSPECTOR_STATUS]--> Popup
- *   Content --[CONTEXT_CAPTURED]--> Background --[HTTP POST]--> Runtime Server
- *
- * Lifecycle note (Manifest V3):
- *   The service worker is stateless — it can be terminated at any time by Chrome.
- *   Inspector state stored here is in-memory only and survives while the SW lives.
- *   For persistent state across SW restarts, use chrome.storage (future enhancement).
+ *   Content --[MULTI_ELEMENTS_SELECTED]--> Background --[relay]--> Popup
+ *   Content --[INSPECTOR_STATUS]---------> Background --[relay]--> Popup
+ *   Content --[CONTEXT_CAPTURED]---------> Background --[HTTP POST]--> Runtime Server
+ *   Popup   --[TOGGLE_INSPECTOR]---------> Background --[forward]--> Content
+ *   Popup   --[CLEAR_SELECTIONS]---------> Background --[forward]--> Content
+ *   Popup   --[REMOVE_SELECTION]---------> Background --[forward]--> Content
  */
 
 import { SERVER_PORT_RANGE, SK_SERVER_PORT } from "../shared/constants"
@@ -22,12 +19,17 @@ import { SERVER_PORT_RANGE, SK_SERVER_PORT } from "../shared/constants"
 // Types
 // ---------------------------------------------------------------------------
 
-/** Union of all message types the background handles */
 type MessageType =
   | "TOGGLE_INSPECTOR"
   | "ELEMENT_SELECTED"
   | "INSPECTOR_STATUS"
   | "CONTEXT_CAPTURED"
+  | "MULTI_ELEMENTS_SELECTED"
+  | "CLEAR_SELECTIONS"
+  | "REMOVE_SELECTION"
+  | "SEND_PROMPT"
+  | "UPDATE_DESCRIPTION"
+  | "SETTINGS_UPDATED"
 
 interface ExtensionMessage {
   type: MessageType
@@ -38,10 +40,10 @@ interface ExtensionMessage {
 // State (in-memory, service-worker lifetime only)
 // ---------------------------------------------------------------------------
 
-/** Whether the inspector is currently active on any tab */
-let inspectorActive = false
+/** Inspector active state per tab */
+const inspectorState = new Map<number, boolean>()
 
-/** Cached server port discovered via probing */
+/** Cached server port */
 let cachedPort: number | null = null
 
 async function discoverServerPort(): Promise<number | null> {
@@ -71,22 +73,14 @@ async function discoverServerPort(): Promise<number | null> {
 // ---------------------------------------------------------------------------
 
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log("[AI Runtime Inspector] Extension installed/updated:", details.reason)
-  inspectorActive = false
+  console.log("[DOM Context] Extension installed/updated:", details.reason)
+  inspectorState.clear()
 })
 
 // ---------------------------------------------------------------------------
 // Message routing
 // ---------------------------------------------------------------------------
 
-/**
- * Central message listener.
- *
- * Routes messages based on source:
- * - From popup  → forward to active tab's content script
- * - From content → forward to popup (chrome.runtime.sendMessage)
- * - Internal    → handle directly
- */
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, sender, sendResponse) => {
     if (!message || !message.type) {
@@ -97,10 +91,14 @@ chrome.runtime.onMessage.addListener(
     switch (message.type) {
       case "TOGGLE_INSPECTOR":
         handleToggleInspector(message, sender, sendResponse)
-        return true // async response
+        return true
 
       case "ELEMENT_SELECTED":
-        handleElementSelected(message, sender, sendResponse)
+        handleRelayToPopup(message, sendResponse)
+        return false
+
+      case "MULTI_ELEMENTS_SELECTED":
+        handleMultiElementsSelected(message, sender, sendResponse)
         return false
 
       case "INSPECTOR_STATUS":
@@ -109,7 +107,18 @@ chrome.runtime.onMessage.addListener(
 
       case "CONTEXT_CAPTURED":
         handleContextCaptured(message, sender, sendResponse)
-        return true // async response
+        return true
+
+      case "CLEAR_SELECTIONS":
+      case "REMOVE_SELECTION":
+      case "UPDATE_DESCRIPTION":
+      case "SETTINGS_UPDATED":
+        handleForwardToContentScript(message, sender, sendResponse)
+        return true
+
+      case "SEND_PROMPT":
+        handleSendPrompt(message, sender, sendResponse)
+        return true
 
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
@@ -123,10 +132,7 @@ chrome.runtime.onMessage.addListener(
 // ---------------------------------------------------------------------------
 
 /**
- * TOGGLE_INSPECTOR — Popup/toolbar → Background → Content Script
- *
- * When the popup sends this, we forward it to the active tab's content script.
- * When triggered by the toolbar icon click, this is also called.
+ * TOGGLE_INSPECTOR — Popup → Background → Content Script
  */
 async function handleToggleInspector(
   message: ExtensionMessage,
@@ -135,22 +141,18 @@ async function handleToggleInspector(
 ): Promise<void> {
   const payload = message.payload as { active: boolean } | undefined
   if (!payload || typeof payload.active !== "boolean") {
-    sendResponse({ success: false, error: "Invalid TOGGLE_INSPECTOR payload" })
+    sendResponse({ success: false, error: "Invalid payload" })
     return
   }
 
-  inspectorActive = payload.active
-
   try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    })
-
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab || !tab.id) {
-      sendResponse({ success: false, error: "No active tab found" })
+      sendResponse({ success: false, error: "No active tab" })
       return
     }
+
+    inspectorState.set(tab.id, payload.active)
 
     await chrome.tabs.sendMessage(tab.id, {
       type: "TOGGLE_INSPECTOR",
@@ -160,101 +162,103 @@ async function handleToggleInspector(
     sendResponse({ success: true })
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-
-    // chrome.tabs.sendMessage fails when content script is not injected
-    // (e.g. on chrome:// pages, new tab page, etc.)
     if (errorMsg.includes("Could not establish connection") ||
         errorMsg.includes("Receiving end does not exist")) {
-      console.warn(
-        "[AI Runtime Inspector] Content script not available on this tab. " +
-        "Try a regular web page."
-      )
-      sendResponse({
-        success: false,
-        error: "Content script not available on this tab",
-      })
+      sendResponse({ success: false, error: "Content script not available" })
       return
     }
-
-    console.error("[AI Runtime Inspector] Error forwarding TOGGLE_INSPECTOR:", err)
+    console.error("[DOM Context] Error forwarding TOGGLE_INSPECTOR:", err)
     sendResponse({ success: false, error: errorMsg })
   }
 }
 
 /**
- * ELEMENT_SELECTED — Content Script → Background → Popup
+ * MULTI_ELEMENTS_SELECTED — Content → Background → Popup
  *
- * The content script sends this when a user clicks on an element.
- * We store state and relay to the popup via chrome.runtime.sendMessage.
- * (popup picks this up via its own chrome.runtime.onMessage listener)
- *
- * Note: chrome.runtime.sendMessage only reaches other extension pages
- * (popup, options). If popup is closed, this is silently dropped.
+ * Injects tabId into payload and relays to popup.
  */
-function handleElementSelected(
+function handleMultiElementsSelected(
   message: ExtensionMessage,
-  _sender: chrome.runtime.MessageSender,
+  sender: chrome.runtime.MessageSender,
   sendResponse: (response: unknown) => void
 ): void {
-  // Relay to popup — errors are expected if popup is closed
-  try {
-    chrome.runtime.sendMessage(message).catch(() => {
-      // Popup likely closed — not an error condition
-    })
-  } catch {
-    // Extension context may be invalidated
-  }
-
-  sendResponse({ success: true })
-}
-
-/**
- * INSPECTOR_STATUS — Content Script → Background → Popup
- *
- * The content script sends this when the inspector state changes
- * (activated, deactivated, or Escape pressed).
- */
-function handleInspectorStatus(
-  message: ExtensionMessage,
-  _sender: chrome.runtime.MessageSender,
-  sendResponse: (response: unknown) => void
-): void {
-  const payload = message.payload as { active: boolean } | undefined
-  if (payload && typeof payload.active === "boolean") {
-    inspectorActive = payload.active
+  // Inject tabId if not present
+  const payload = message.payload as { contexts: unknown[]; tabId?: number }
+  if (sender.tab?.id && !payload.tabId) {
+    payload.tabId = sender.tab.id
   }
 
   // Relay to popup
   try {
-    chrome.runtime.sendMessage(message).catch(() => {
+    chrome.runtime.sendMessage({
+      type: "MULTI_ELEMENTS_SELECTED",
+      payload,
+    }).catch(() => {
       // Popup likely closed
     })
   } catch {
-    // Extension context may be invalidated
+    // Extension context invalidated
   }
 
   sendResponse({ success: true })
 }
 
 /**
- * CONTEXT_CAPTURED — Content Script → Background → Runtime Server
- *
- * The content script sends this when a user clicks on an element.
- * We forward the compressed context payload to the local Runtime server
- * via HTTP POST for storage and later retrieval by the MCP server.
+ * ELEMENT_SELECTED — Legacy relay to popup
  */
-async function handleContextCaptured(
+function handleRelayToPopup(
   message: ExtensionMessage,
   _sender: chrome.runtime.MessageSender,
   sendResponse: (response: unknown) => void
+): void {
+  try {
+    chrome.runtime.sendMessage(message).catch(() => {})
+  } catch {}
+  sendResponse({ success: true })
+}
+
+/**
+ * INSPECTOR_STATUS — Content → Background → Popup
+ */
+function handleInspectorStatus(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): void {
+  const payload = message.payload as { active: boolean } | undefined
+  if (payload && typeof payload.active === "boolean" && sender.tab?.id) {
+    inspectorState.set(sender.tab.id, payload.active)
+  }
+
+  try {
+    chrome.runtime.sendMessage(message).catch(() => {})
+  } catch {}
+
+  sendResponse({ success: true })
+}
+
+/**
+ * CONTEXT_CAPTURED — Content → Background → Runtime Server
+ *
+ * Injects tabId into payload for server-side isolation.
+ */
+async function handleContextCaptured(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
 ): Promise<void> {
   const payload = message.payload as
-    | { context: unknown; url: string; pageTitle?: string }
+    | { context: unknown; url: string; pageTitle?: string; tabId?: number; selectionId?: string; selectionLabel?: string }
     | undefined
 
   if (!payload || !payload.context || !payload.url) {
     sendResponse({ success: false, error: "Invalid CONTEXT_CAPTURED payload" })
     return
+  }
+
+  // Inject tabId
+  if (sender.tab?.id && !payload.tabId) {
+    payload.tabId = sender.tab.id
   }
 
   try {
@@ -270,19 +274,91 @@ async function handleContextCaptured(
     })
 
     if (!response.ok) {
-      console.warn(
-        "[AI Runtime Inspector] Server returned status:",
-        response.status
-      )
+      console.warn("[DOM Context] Server returned status:", response.status)
     }
 
     sendResponse({ success: true })
   } catch (err) {
-    // Server not running — silent fail
-    console.warn(
-      "[AI Runtime Inspector] Cannot reach runtime server:",
-      err instanceof Error ? err.message : String(err)
-    )
+    console.warn("[DOM Context] Cannot reach runtime server:", err instanceof Error ? err.message : String(err))
+    sendResponse({ success: false, error: "Runtime server not available" })
+  }
+}
+
+/**
+ * Forward messages to content script in active tab.
+ * Used for CLEAR_SELECTIONS and REMOVE_SELECTION.
+ */
+async function handleForwardToContentScript(
+  message: ExtensionMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): Promise<void> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) {
+      sendResponse({ success: false, error: "No active tab" })
+      return
+    }
+
+    await chrome.tabs.sendMessage(tab.id, message)
+    sendResponse({ success: true })
+  } catch (err) {
+    sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) })
+  }
+}
+
+/**
+ * SEND_PROMPT — Panel → Background → Runtime Server
+ *
+ * Receives user prompt + element contexts from the floating panel
+ * and forwards them to the Runtime Server's /api/prompt endpoint.
+ */
+async function handleSendPrompt(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): Promise<void> {
+  const payload = message.payload as {
+    prompt: string
+    contexts?: unknown[]
+    url?: string
+    pageTitle?: string
+  } | undefined
+
+  if (!payload || !payload.prompt) {
+    sendResponse({ success: false, error: "Invalid SEND_PROMPT payload" })
+    return
+  }
+
+  try {
+    const port = await discoverServerPort()
+    if (!port) {
+      sendResponse({ success: false, error: "Runtime server not available" })
+      return
+    }
+
+    const tabId = sender.tab?.id
+    const response = await fetch(`http://localhost:${port}/api/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: payload.prompt,
+        contexts: payload.contexts || [],
+        url: payload.url || "",
+        pageTitle: payload.pageTitle,
+        tabId,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn("[DOM Context] Server returned status:", response.status)
+      sendResponse({ success: false, error: "Server error" })
+      return
+    }
+
+    sendResponse({ success: true })
+  } catch (err) {
+    console.warn("[DOM Context] Cannot reach runtime server:", err instanceof Error ? err.message : String(err))
     sendResponse({ success: false, error: "Runtime server not available" })
   }
 }
@@ -291,63 +367,27 @@ async function handleContextCaptured(
 // Toolbar icon click
 // ---------------------------------------------------------------------------
 
-/**
- * Toggle the inspector when the user clicks the extension toolbar icon.
- * Falls back to querying the current inspector state if unknown.
- */
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab?.id) return
-
-  // Cannot use toolbar click on chrome:// pages
   if (tab.url && (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://"))) {
     return
   }
 
+  const currentState = inspectorState.get(tab.id) ?? false
+
   try {
     await chrome.tabs.sendMessage(tab.id, {
       type: "TOGGLE_INSPECTOR",
-      payload: { active: !inspectorActive },
+      payload: { active: !currentState },
     })
-    inspectorActive = !inspectorActive
+    inspectorState.set(tab.id, !currentState)
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-
     if (errorMsg.includes("Could not establish connection") ||
         errorMsg.includes("Receiving end does not exist")) {
-      console.warn(
-        "[AI Runtime Inspector] Cannot toggle inspector on this page. " +
-        "Navigate to a regular web page first."
-      )
+      console.warn("[DOM Context] Cannot toggle on this page.")
       return
     }
-
-    console.error("[AI Runtime Inspector] Error on icon click:", err)
+    console.error("[DOM Context] Error on icon click:", err)
   }
 })
-
-// ---------------------------------------------------------------------------
-// MCP Integration Points (future)
-// ---------------------------------------------------------------------------
-
-// TODO: MCP Server Connection
-// When the MCP (Model Context Protocol) server is implemented:
-// 1. Establish a long-lived connection via chrome.runtime.connectNative or WebSocket
-// 2. Forward ELEMENT_SELECTED payloads to the MCP server for AI processing
-// 3. Receive analysis results and relay them back to the popup
-//
-// Example integration structure:
-//   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-//     if (msg.type === 'MCP_ANALYZE') {
-//       forwardToMcpServer(msg.payload)
-//         .then(result => sendResponse({ success: true, data: result }))
-//         .catch(err => sendResponse({ success: false, error: err.message }))
-//       return true // async
-//     }
-//   })
-
-// TODO: MCP Server Commands
-// Future commands that the MCP server may send through the background:
-// - INSPECT_ELEMENT: Programmatically select an element by CSS selector
-// - GET_PAGE_CONTEXT: Collect full page DOM context
-// - EXECUTE_SCRIPT: Run a script in the active tab's content script context
-// - NAVIGATE: Open a URL in the current tab

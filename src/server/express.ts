@@ -12,30 +12,19 @@ import type {
   ContextEntry,
 } from '../shared/types';
 
-/**
- * Create and configure the Express application with all middleware and routes.
- */
 export function createApp(): Express {
   const app = express();
-
-  // --- Middleware ---
 
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
 
-  // Request logger
   app.use((req: Request, _res: Response, next: NextFunction) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] ${req.method} ${req.url}`);
     next();
   });
 
-  // --- Routes ---
-
-  /**
-   * GET /api/health
-   * Health check endpoint.
-   */
+  // GET /api/health
   app.get('/api/health', (_req: Request, res: Response<ApiResponse<{ status: string; storeSize: number }>>) => {
     res.json({
       success: true,
@@ -44,23 +33,21 @@ export function createApp(): Express {
     });
   });
 
-  /**
-   * POST /api/context
-   * Receive a new context capture from the extension content script.
-   */
+  // POST /api/context — receives context with optional tabId
   app.post('/api/context', (req: Request<object, ApiResponse<ContextEntry>, ContextCapturePayload>, res: Response<ApiResponse<ContextEntry>>) => {
     const { context, url } = req.body;
+    const tabId = req.body.tabId as number | undefined;
 
     if (!context || !url || typeof url !== 'string') {
       res.status(400).json({
         success: false,
-        error: 'Request body must include "context" (CompressedContext) and "url" (string).',
+        error: 'Request body must include "context" and "url".',
         timestamp: Date.now(),
       });
       return;
     }
 
-    const entry = contextStore.add(context, url, req.body.pageTitle);
+    const entry = contextStore.add(context, url, req.body.pageTitle, tabId);
 
     res.status(201).json({
       success: true,
@@ -69,12 +56,10 @@ export function createApp(): Express {
     });
   });
 
-  /**
-   * GET /api/context/latest
-   * Retrieve the most recently captured context entry.
-   */
-  app.get('/api/context/latest', (_req: Request, res: Response<ApiResponse<ContextEntry>>) => {
-    const entry = contextStore.getLatest();
+  // GET /api/context/latest?tabId=N
+  app.get('/api/context/latest', (req: Request<object, ApiResponse<ContextEntry>, object, { tabId?: string }>, res: Response<ApiResponse<ContextEntry>>) => {
+    const tabId = req.query.tabId ? parseInt(req.query.tabId, 10) : undefined;
+    const entry = contextStore.getLatest(tabId);
 
     if (!entry) {
       res.status(404).json({
@@ -92,23 +77,30 @@ export function createApp(): Express {
     });
   });
 
-  /**
-   * GET /api/contexts?limit=N
-   * List stored context entries sorted by timestamp descending.
-   */
-  app.get('/api/contexts', (req: Request<object, ApiResponse<ContextEntry[]>, object, { limit?: string }>, res: Response<ApiResponse<ContextEntry[]>>) => {
-    const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+  // GET /api/contexts?limit=N&tabId=N
+  app.get('/api/contexts', (req: Request<object, ApiResponse<ContextEntry[]>, object, { limit?: string; tabId?: string }>, res: Response<ApiResponse<ContextEntry[]>>) => {
+    let limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+    let tabId = req.query.tabId ? parseInt(req.query.tabId, 10) : undefined;
 
     if (req.query.limit && (isNaN(limit!) || limit! < 1)) {
       res.status(400).json({
         success: false,
-        error: '"limit" query parameter must be a positive integer.',
+        error: '"limit" must be a positive integer.',
         timestamp: Date.now(),
       });
       return;
     }
 
-    const entries = contextStore.list(limit);
+    if (req.query.tabId && isNaN(tabId!)) {
+      res.status(400).json({
+        success: false,
+        error: '"tabId" must be a number.',
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const entries = contextStore.list(limit, tabId);
 
     res.json({
       success: true,
@@ -117,12 +109,10 @@ export function createApp(): Express {
     });
   });
 
-  /**
-   * DELETE /api/contexts
-   * Clear all stored context entries.
-   */
-  app.delete('/api/contexts', (_req: Request, res: Response<ApiResponse<{ deleted: boolean }>>) => {
-    contextStore.clear();
+  // DELETE /api/contexts?tabId=N
+  app.delete('/api/contexts', (req: Request<object, ApiResponse<{ deleted: boolean }>, object, { tabId?: string }>, res: Response<ApiResponse<{ deleted: boolean }>>) => {
+    const tabId = req.query.tabId ? parseInt(req.query.tabId, 10) : undefined;
+    contextStore.clear(tabId);
 
     res.json({
       success: true,
@@ -131,11 +121,57 @@ export function createApp(): Express {
     });
   });
 
-  // --- Error Handler ---
+  // POST /api/prompt — receives user prompt + element contexts from floating panel
+  app.post('/api/prompt', (req: Request, res: Response<ApiResponse>) => {
+    const { prompt, contexts, url, pageTitle, tabId } = req.body;
+
+    if (!prompt || typeof prompt !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'Request body must include "prompt".',
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const entry = contextStore.addUserPrompt({
+      prompt,
+      contexts: contexts || [],
+      url: url || '',
+      pageTitle,
+      tabId: tabId ? parseInt(tabId, 10) : undefined,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: entry,
+      timestamp: Date.now(),
+    });
+  });
+
+  // GET /api/prompt/latest?tabId=N
+  app.get('/api/prompt/latest', (req: Request<object, ApiResponse, object, { tabId?: string }>, res: Response<ApiResponse>) => {
+    const tabId = req.query.tabId ? parseInt(req.query.tabId, 10) : undefined;
+    const entry = contextStore.getLatestPrompt(tabId);
+
+    if (!entry) {
+      res.status(404).json({
+        success: false,
+        error: 'No prompt entries found.',
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: entry,
+      timestamp: Date.now(),
+    });
+  });
 
   app.use((err: Error, _req: Request, res: Response<ApiResponse>, _next: NextFunction) => {
     console.error(`[ERROR] ${err.message}`);
-
     res.status(500).json({
       success: false,
       error: err.message || 'Internal server error.',

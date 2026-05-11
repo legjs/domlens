@@ -134,6 +134,82 @@ export async function startMcpServer(): Promise<void> {
     },
   );
 
+  // --- Tool: get_user_prompt ---
+  server.registerTool(
+    'get_user_prompt',
+    {
+      description: 'Get the latest user prompt submitted from the Chrome extension floating panel, including selected element contexts. Returns the user\'s description/intent along with full element details.',
+      inputSchema: z.object({}),
+    },
+    async () => {
+      const entry = contextStore.getLatestPrompt();
+      if (!entry) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'No user prompt available. Use the Chrome extension to select elements and submit a prompt from the floating panel.',
+            },
+          ],
+        };
+      }
+
+      const lines: string[] = ['# DOM Context - User Request\n'];
+      lines.push(`**Page**: ${entry.pageTitle || entry.url}`);
+      lines.push(`**URL**: ${entry.url}`);
+      lines.push(`**Time**: ${new Date(entry.timestamp).toISOString()}\n`);
+
+      for (const ctx of entry.contexts) {
+        const se = ctx.context?.selectedElement;
+        lines.push(`## [${ctx.label}] Element${ctx.description ? ` (${ctx.description})` : ''}`);
+        lines.push(`- **Tag**: ${se?.tag || ctx.elementInfo.tagName}`);
+        if (se?.cssSelector) lines.push(`- **CSS Selector**: \`${se.cssSelector}\``);
+        if (se?.xpath) lines.push(`- **XPath**: \`${se.xpath}\``);
+        if (ctx.elementInfo.id) lines.push(`- **ID**: ${ctx.elementInfo.id}`);
+        if (ctx.elementInfo.className) lines.push(`- **Class**: ${ctx.elementInfo.className}`);
+        if (se?.text) lines.push(`- **Text**: ${se.text.length > 200 ? se.text.slice(0, 200) + '...' : se.text}`);
+        if (se?.rect) {
+          lines.push(`- **Size**: ${Math.round(se.rect.width)} x ${Math.round(se.rect.height)}px`);
+          lines.push(`- **Position**: top=${Math.round(se.rect.top)}, left=${Math.round(se.rect.left)}`);
+        }
+        if (se?.accessibility?.role) {
+          const a = se.accessibility;
+          lines.push(`- **Role**: ${a.role}`);
+          if (a.ariaLabel) lines.push(`- **ARIA Label**: ${a.ariaLabel}`);
+          if (a.isFocusable) lines.push(`- **Focusable**: yes`);
+          if (a.isInteractive) lines.push(`- **Interactive**: yes`);
+        }
+        if (se?.styles && Object.keys(se.styles).length > 0) {
+          lines.push('- **Computed Styles**:');
+          for (const [key, val] of Object.entries(se.styles)) {
+            lines.push(`  - ${key}: ${val}`);
+          }
+        }
+        if (se?.html) {
+          lines.push('- **HTML**:');
+          lines.push('```html');
+          lines.push(se.html.length > 500 ? se.html.slice(0, 500) + '...' : se.html);
+          lines.push('```');
+        }
+        if (ctx.context?.layoutChain && ctx.context.layoutChain.length > 0) {
+          lines.push('- **Layout Chain**:');
+          for (let i = 0; i < ctx.context.layoutChain.length; i++) {
+            const node = ctx.context.layoutChain[i];
+            lines.push(`  ${i}: ${node.tag} (${node.display}) ${node.width}px`);
+          }
+        }
+        lines.push('');
+      }
+
+      lines.push('## User Request');
+      lines.push(entry.prompt);
+
+      return {
+        content: [{ type: 'text' as const, text: lines.join('\n') }],
+      };
+    },
+  );
+
   // --- Connect via stdio ---
   const transport = new StdioServerTransport();
   await server.connect(transport);

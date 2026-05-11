@@ -2,9 +2,12 @@
  * Overlay Module
  * Renders visual overlays on the target page to highlight
  * selected elements and their layout boundaries.
+ *
+ * Supports multi-select mode: each selected element gets its own overlay
+ * and a letter label badge (A, B, C, ...).
  */
 
-import { OVERLAY_STYLES, DEFAULT_CONFIG } from "~shared/constants"
+import { OVERLAY_STYLES, DEFAULT_CONFIG, LABEL_COLORS, MULTI_OVERLAY_PREFIX, LABEL_BADGE_PREFIX } from "~shared/constants"
 import type { BoxModel } from "~shared/types"
 
 /** Overlay element states */
@@ -29,22 +32,33 @@ const OVERLAY_STATE_STYLES: Record<
   },
 }
 
-/** Unique ID for overlay elements */
-const OVERLAY_ID = "__ai_runtime_inspector_overlay__"
+/** Unique ID for hover overlay element */
+const HOVER_OVERLAY_ID = "__dom_ctx_hover_overlay__"
 
-let overlayElement: HTMLDivElement | null = null
+/** Hover overlay element (singleton) */
+let hoverOverlayElement: HTMLDivElement | null = null
+
+/** Selected overlays map: key -> element */
+let selectedOverlays: Map<string, HTMLDivElement> = new Map()
+
+/** Label badges map: key -> element */
+let labelBadges: Map<string, HTMLDivElement> = new Map()
+
+// ---------------------------------------------------------------------------
+// Hover overlay (single, for mousemove tracking)
+// ---------------------------------------------------------------------------
 
 /**
- * Create the overlay DOM element with base styles.
+ * Create the hover overlay DOM element.
  * Called once; subsequent calls return the existing element.
  */
-export function createOverlay(): HTMLDivElement {
-  if (overlayElement && document.contains(overlayElement)) {
-    return overlayElement
+function createHoverOverlay(): HTMLDivElement {
+  if (hoverOverlayElement && document.contains(hoverOverlayElement)) {
+    return hoverOverlayElement
   }
 
   const el = document.createElement("div")
-  el.id = OVERLAY_ID
+  el.id = HOVER_OVERLAY_ID
   el.setAttribute("aria-hidden", "true")
 
   // Apply base OVERLAY_STYLES
@@ -57,95 +71,223 @@ export function createOverlay(): HTMLDivElement {
     }
   }
 
-  // Ensure overlay sits above everything on the page
-  el.style.setProperty("z-index", "2147483647", "important")
-
-  // Start in hidden state
+  el.style.setProperty("z-index", "2147483646", "important")
   applyStateStyles(el, "hidden")
-
   document.documentElement.appendChild(el)
-  overlayElement = el
+  hoverOverlayElement = el
 
   return el
 }
 
 /**
- * Update the overlay position and dimensions to match a BoxModel rect.
+ * Show the hover overlay at a given position.
  */
-export function updateOverlay(rect: BoxModel): void {
-  const el = getOverlay()
-  if (!el) return
+export function showOverlay(rect: BoxModel): void {
+  const el = createHoverOverlay()
+  updateOverlayPosition(el, rect)
+  applyStateStyles(el, "hover")
+}
 
+/**
+ * Show the hover overlay at a given position with selected styling.
+ */
+export function showSelectedOverlay(rect: BoxModel): void {
+  const el = createHoverOverlay()
+  updateOverlayPosition(el, rect)
+  applyStateStyles(el, "selected")
+}
+
+/**
+ * Hide the hover overlay (keep in DOM for reuse).
+ */
+export function hideOverlay(): void {
+  if (hoverOverlayElement && document.contains(hoverOverlayElement)) {
+    applyStateStyles(hoverOverlayElement, "hidden")
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Selected overlays (multi-select)
+// ---------------------------------------------------------------------------
+
+/**
+ * Show or update a selected element overlay + label badge.
+ * @param key - Unique key for this selection (e.g. UUID)
+ * @param rect - Element bounding rect
+ * @param label - Letter label (A, B, C, ...)
+ * @param labelIndex - Index for color selection
+ */
+export function showSelectedElementOverlay(
+  key: string,
+  rect: BoxModel,
+  label: string,
+  labelIndex: number
+): void {
+  // Create/update overlay
+  let overlay = selectedOverlays.get(key)
+  if (!overlay || !document.contains(overlay)) {
+    overlay = document.createElement("div")
+    overlay.id = MULTI_OVERLAY_PREFIX + key
+    overlay.setAttribute("aria-hidden", "true")
+
+    // Apply base styles
+    for (const [prop, value] of Object.entries(OVERLAY_STYLES)) {
+      try {
+        const cssProp = camelToKebab(prop)
+        overlay.style.setProperty(cssProp, String(value))
+      } catch {
+        // Ignore
+      }
+    }
+    overlay.style.setProperty("z-index", "2147483645", "important")
+
+    // Selected style with color
+    const colorSet = LABEL_COLORS[labelIndex % LABEL_COLORS.length]
+    overlay.style.setProperty("border", `2px solid ${colorSet.bg}`)
+    overlay.style.setProperty("background", `${colorSet.bg}15`)
+    overlay.style.setProperty("box-shadow", `0 0 8px ${colorSet.bg}80`)
+
+    document.documentElement.appendChild(overlay)
+    selectedOverlays.set(key, overlay)
+  }
+
+  updateOverlayPosition(overlay, rect)
+
+  // Create/update label badge
+  let badge = labelBadges.get(key)
+  if (!badge || !document.contains(badge)) {
+    badge = document.createElement("div")
+    badge.id = LABEL_BADGE_PREFIX + key
+    badge.setAttribute("aria-hidden", "true")
+
+    const colorSet = LABEL_COLORS[labelIndex % LABEL_COLORS.length]
+    badge.style.cssText = `
+      position: fixed;
+      z-index: 2147483647;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px 0 4px 0;
+      background: ${colorSet.bg};
+      color: ${colorSet.text};
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+      line-height: 1;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    `
+    badge.textContent = label
+
+    document.documentElement.appendChild(badge)
+    labelBadges.set(key, badge)
+  }
+
+  // Position badge at top-left of element
+  badge.style.top = `${rect.top}px`
+  badge.style.left = `${rect.left}px`
+}
+
+/**
+ * Remove a single selected element overlay and badge.
+ */
+export function removeSelectedOverlay(key: string): void {
+  const overlay = selectedOverlays.get(key)
+  if (overlay && document.contains(overlay)) {
+    overlay.remove()
+  }
+  selectedOverlays.delete(key)
+
+  const badge = labelBadges.get(key)
+  if (badge && document.contains(badge)) {
+    badge.remove()
+  }
+  labelBadges.delete(key)
+}
+
+/**
+ * Remove all selected overlays and badges.
+ */
+export function removeAllSelectedOverlays(): void {
+  for (const overlay of selectedOverlays.values()) {
+    if (document.contains(overlay)) overlay.remove()
+  }
+  selectedOverlays.clear()
+
+  for (const badge of labelBadges.values()) {
+    if (document.contains(badge)) badge.remove()
+  }
+  labelBadges.clear()
+}
+
+/**
+ * Update positions of all overlays after scroll.
+ */
+export function updateAllOverlayPositions(
+  positions: Map<string, { rect: BoxModel; labelIndex: number }>
+): void {
+  for (const [key, { rect }] of positions) {
+    const overlay = selectedOverlays.get(key)
+    if (overlay && document.contains(overlay)) {
+      updateOverlayPosition(overlay, rect)
+    }
+
+    const badge = labelBadges.get(key)
+    if (badge && document.contains(badge)) {
+      badge.style.top = `${rect.top}px`
+      badge.style.left = `${rect.left}px`
+    }
+  }
+}
+
+/**
+ * Completely remove all overlays from the DOM (hover + selected).
+ */
+export function destroyAllOverlays(): void {
+  if (hoverOverlayElement) {
+    hoverOverlayElement.remove()
+    hoverOverlayElement = null
+  }
+  removeAllSelectedOverlays()
+}
+
+/**
+ * Check if any selected overlay exists.
+ */
+export function hasSelectedOverlays(): boolean {
+  return selectedOverlays.size > 0
+}
+
+/**
+ * Get the hover overlay element ID (for skip detection in inspector).
+ */
+export function getHoverOverlayId(): string {
+  return HOVER_OVERLAY_ID
+}
+
+/**
+ * Get all overlay/badge element IDs for skip detection.
+ */
+export function getAllOverlayIds(): string[] {
+  const ids: string[] = [HOVER_OVERLAY_ID]
+  for (const key of selectedOverlays.keys()) {
+    ids.push(MULTI_OVERLAY_PREFIX + key)
+    ids.push(LABEL_BADGE_PREFIX + key)
+  }
+  return ids
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function updateOverlayPosition(el: HTMLDivElement, rect: BoxModel): void {
   el.style.top = `${rect.top}px`
   el.style.left = `${rect.left}px`
   el.style.width = `${rect.width}px`
   el.style.height = `${rect.height}px`
-}
-
-/**
- * Set the visual state of the overlay.
- */
-export function setOverlayState(state: OverlayState): void {
-  const el = getOverlay()
-  if (!el) return
-
-  applyStateStyles(el, state)
-}
-
-/**
- * Show the overlay at a given position with hover styling.
- */
-export function showOverlay(rect: BoxModel): void {
-  const el = createOverlay()
-  updateOverlay(rect)
-  setOverlayState("hover")
-}
-
-/**
- * Show the overlay at a given position with selected (orange) styling.
- */
-export function showSelectedOverlay(rect: BoxModel): void {
-  const el = createOverlay()
-  updateOverlay(rect)
-  setOverlayState("selected")
-}
-
-/**
- * Hide the overlay (keep it in the DOM for reuse).
- */
-export function hideOverlay(): void {
-  const el = getOverlay()
-  if (!el) return
-
-  setOverlayState("hidden")
-}
-
-/**
- * Completely remove the overlay element from the DOM.
- * Call this when the inspector is deactivated to clean up.
- */
-export function destroyOverlay(): void {
-  if (overlayElement) {
-    overlayElement.remove()
-    overlayElement = null
-  }
-}
-
-/**
- * Check if the overlay currently exists in the DOM.
- */
-export function overlayExists(): boolean {
-  return overlayElement !== null && document.contains(overlayElement)
-}
-
-// --- Internal helpers ---
-
-function getOverlay(): HTMLDivElement | null {
-  if (overlayElement && document.contains(overlayElement)) {
-    return overlayElement
-  }
-  overlayElement = null
-  return null
 }
 
 function applyStateStyles(el: HTMLDivElement, state: OverlayState): void {

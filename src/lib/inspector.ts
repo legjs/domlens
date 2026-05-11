@@ -1,378 +1,318 @@
 /**
  * Inspector Module
- * Handles element selection, hover highlighting, and click interception
- * on the target web page.
  *
- * Communication protocol (Chrome Extension messaging):
- *   IN  (from popup/background):
- *     { type: 'TOGGLE_INSPECTOR', payload: { active: boolean } }
- *   OUT (from content script):
- *     { type: 'ELEMENT_SELECTED', payload: ElementInfo }
- *     { type: 'INSPECTOR_STATUS', payload: { active: boolean } }
+ * Two activation modes:
+ *   1. Hold Alt (Win) / Option (Mac) - temporary inspect mode, releases on key up
+ *   2. Popup toggle - persistent inspect mode until toggled off or Escape
+ *
+ * Selection modes:
+ *   - Alt + Click (or toggle + Click): Single select (replaces previous)
+ *   - Ctrl+Alt (Win) / Cmd+Option (Mac) + Click: Multi-select (appends)
+ *   - Escape: Clear all selections
  */
 
-import type { ElementInfo } from "~shared/types"
-import { SENSITIVE_SELECTORS, DEFAULT_CONFIG } from "~shared/constants"
+import type { ElementInfo, SelectedContext, CompressedContext, ShortcutConfig } from "~shared/types"
+import { SENSITIVE_SELECTORS, DEFAULT_CONFIG, LABEL_SEQUENCE, SK_SHORTCUT_CONFIG, DEFAULT_SHORTCUT_CONFIG } from "~shared/constants"
 import { compressContext } from "~lib/compressor"
 import {
   showOverlay,
-  showSelectedOverlay,
   hideOverlay,
-  destroyOverlay,
+  destroyAllOverlays,
+  showSelectedElementOverlay,
+  removeAllSelectedOverlays,
+  removeSelectedOverlay,
+  updateAllOverlayPositions,
+  getAllOverlayIds,
 } from "~lib/overlay"
+import { createPanel, updateCards, destroyPanel } from "~lib/panel"
+import { showInlinePrompt, moveInlinePrompt, hideInlinePrompt, destroyInlinePrompt, isInlinePromptVisible } from "~lib/inline-prompt"
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-
-let active = false
-let selectedElement: Element | null = null
-
-/** Bound event handlers stored for cleanup */
-let onMouseMove: ((e: MouseEvent) => void) | null = null
-let onClick: ((e: MouseEvent) => void) | null = null
-let onKeyDown: ((e: KeyboardEvent) => void) | null = null
-let onScroll: (() => void) | null = null
-
-/** Throttle timestamp for mousemove */
+let inspectActive = false
+let altHeld = false
+let toggleActive = false
+let cachedOverlayIds: Set<string> = new Set()
 let lastMoveTime = 0
-const MOVE_THROTTLE_MS = 16 // ~60fps
-
-/** Reference to the current hovered element (for dedup) */
+const MOVE_THROTTLE_MS = 16
 let lastHoveredElement: Element | null = null
+let scrollAttached = false
+let shortcutConfig: ShortcutConfig = { ...DEFAULT_SHORTCUT_CONFIG }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Activate or deactivate the inspector.
- * This is the main entry point called in response to TOGGLE_INSPECTOR messages.
- */
-export function setInspectorActive(value: boolean): void {
-  if (value === active) return
-
-  active = value
-
-  if (active) {
-    attachListeners()
-    notifyStatus(true)
-  } else {
-    detachListeners()
-    cleanup()
-    notifyStatus(false)
-  }
+// Load shortcut config from storage
+async function loadShortcutConfig(): Promise<void> {
+  try {
+    const r = await chrome.storage.local.get(SK_SHORTCUT_CONFIG)
+    if (r[SK_SHORTCUT_CONFIG]) {
+      shortcutConfig = r[SK_SHORTCUT_CONFIG] as ShortcutConfig
+    }
+  } catch { /* ignore */ }
 }
 
-/**
- * Returns whether the inspector is currently active.
- */
-export function isInspectorActive(): boolean {
-  return active
+// Listen for shortcut config changes
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes[SK_SHORTCUT_CONFIG]) {
+      shortcutConfig = changes[SK_SHORTCUT_CONFIG].newValue as ShortcutConfig ?? { ...DEFAULT_SHORTCUT_CONFIG }
+    }
+  })
+} catch { /* ignore */ }
+
+// Load config on module init
+loadShortcutConfig()
+
+interface SelectionEntry {
+  id: string
+  label: string
+  element: Element
+  elementInfo: ElementInfo
+  context: CompressedContext
 }
 
-/**
- * Returns the currently selected element, if any.
- */
-export function getSelectedElement(): Element | null {
-  return selectedElement
+let selections: Map<string, SelectionEntry> = new Map()
+let nextLabelIndex = 0
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
-/**
- * Programmatically clear the current selection.
- */
-export function clearSelection(): void {
-  selectedElement = null
-  lastHoveredElement = null
-  hideOverlay()
+function shouldBeActive(): boolean {
+  return altHeld || toggleActive
 }
 
-// ---------------------------------------------------------------------------
-// Event listener attachment / detachment
-// ---------------------------------------------------------------------------
-
-function attachListeners(): void {
-  // Create bound handlers once
-  onMouseMove = handleMouseMove.bind(null)
-  onClick = handleClick.bind(null)
-  onKeyDown = handleKeyDown.bind(null)
-  onScroll = handleScroll.bind(null)
-
+function activateInspect(): void {
+  if (inspectActive) return
+  inspectActive = true
   document.addEventListener("mousemove", onMouseMove, true)
   document.addEventListener("click", onClick, true)
-  document.addEventListener("keydown", onKeyDown, true)
+  attachScrollListener()
+  cachedOverlayIds = new Set(getAllOverlayIds())
+  notifyStatus(true)
+}
+
+function deactivateInspect(): void {
+  if (!inspectActive) return
+  inspectActive = false
+  document.removeEventListener("mousemove", onMouseMove, true)
+  document.removeEventListener("click", onClick, true)
+  if (selections.size === 0) detachScrollListener()
+  hideOverlay()
+  lastHoveredElement = null
+  notifyStatus(false)
+}
+
+function attachScrollListener(): void {
+  if (scrollAttached) return
+  scrollAttached = true
   window.addEventListener("scroll", onScroll, true)
 }
 
-function detachListeners(): void {
-  if (onMouseMove) document.removeEventListener("mousemove", onMouseMove, true)
-  if (onClick) document.removeEventListener("click", onClick, true)
-  if (onKeyDown) document.removeEventListener("keydown", onKeyDown, true)
-  if (onScroll) window.removeEventListener("scroll", onScroll, true)
-
-  onMouseMove = null
-  onClick = null
-  onKeyDown = null
-  onScroll = null
+function detachScrollListener(): void {
+  if (!scrollAttached) return
+  scrollAttached = false
+  window.removeEventListener("scroll", onScroll, true)
 }
 
-function cleanup(): void {
-  selectedElement = null
-  lastHoveredElement = null
-  destroyOverlay()
+function recomputeActivation(): void {
+  if (shouldBeActive()) { activateInspect() } else { deactivateInspect() }
 }
 
-// ---------------------------------------------------------------------------
-// Event handlers
-// ---------------------------------------------------------------------------
+export function setInspectorActive(value: boolean): void {
+  toggleActive = value
+  recomputeActivation()
+}
 
-/**
- * mousemove — lightweight element detection with throttle.
- * Only updates the overlay; does NOT perform deep analysis.
- */
-function handleMouseMove(e: MouseEvent): void {
-  if (!active) return
+export function isInspectorActive(): boolean { return inspectActive }
 
-  // Throttle to ~60fps
+export function getSelections(): Map<string, SelectionEntry> { return selections }
+
+export function clearSelections(): void {
+  selections.clear()
+  nextLabelIndex = 0
+  removeAllSelectedOverlays()
+  cachedOverlayIds = new Set(getAllOverlayIds())
+  if (!inspectActive) detachScrollListener()
+  hideInlinePrompt()
+  updatePanel()
+}
+
+// Keyboard listeners (ALWAYS attached at module load)
+
+function onKeyDown(e: KeyboardEvent): void {
+  if (e.key === shortcutConfig.inspectKey && !altHeld) {
+    e.preventDefault() // Prevent browser menu bar activation on Windows
+    altHeld = true
+    recomputeActivation()
+    return
+  }
+  if (!inspectActive) return
+  if (e.key === "Escape") {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleActive = false
+    clearSelections()
+    deactivateInspect()
+  }
+}
+
+function onKeyUp(e: KeyboardEvent): void {
+  if (e.key === shortcutConfig.inspectKey && altHeld) {
+    e.preventDefault() // Prevent browser menu bar activation on Windows
+    altHeld = false
+    recomputeActivation()
+  }
+}
+
+document.addEventListener("keydown", onKeyDown, true)
+document.addEventListener("keyup", onKeyUp, true)
+
+// Mouse listeners (attached/detached dynamically)
+
+function onMouseMove(e: MouseEvent): void {
+  if (!inspectActive) return
+  // When toggleActive + inspectRequiresShortcut, only show hover overlay when key is held
+  if (toggleActive && !altHeld && shortcutConfig.inspectRequiresShortcut) { hideOverlay(); lastHoveredElement = null; return }
   const now = performance.now()
   if (now - lastMoveTime < MOVE_THROTTLE_MS) return
   lastMoveTime = now
-
   const target = document.elementFromPoint(e.clientX, e.clientY)
-  if (!target) {
-    hideOverlay()
-    lastHoveredElement = null
-    return
-  }
-
-  // Skip overlay element itself and extension UI
-  if (target.id === "__ai_runtime_inspector_overlay__") return
-
-  // Skip if hovering the same element (avoid unnecessary DOM reads)
+  if (!target) { hideOverlay(); lastHoveredElement = null; return }
+  if (target.closest('#dom-ctx-panel, #dom-ctx-inline-prompt')) return
+  if (cachedOverlayIds.has(target.id)) return
   if (target === lastHoveredElement) return
   lastHoveredElement = target
-
-  // Skip sensitive elements — do not highlight password fields etc.
-  if (isSensitiveElement(target)) {
-    hideOverlay()
-    return
-  }
-
+  if (isSensitiveElement(target)) { hideOverlay(); return }
   const rect = target.getBoundingClientRect()
-  showOverlay({
-    top: rect.top,
-    left: rect.left,
-    width: rect.width,
-    height: rect.height,
-    right: rect.right,
-    bottom: rect.bottom,
-  })
+  showOverlay({ top: rect.top, left: rect.left, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom })
 }
 
-/**
- * click — select the element and trigger data collection flow.
- * Prevents default to avoid triggering page interactions.
- */
-function handleClick(e: MouseEvent): void {
-  if (!active) return
+function onClick(e: MouseEvent): void {
+  if (!inspectActive) return
+
+  // If toggleActive + inspectRequiresShortcut, only allow click when inspect key is held
+  if (toggleActive && !altHeld && shortcutConfig.inspectRequiresShortcut) return
 
   const target = document.elementFromPoint(e.clientX, e.clientY)
   if (!target) return
-
-  // Skip overlay and extension UI
-  if (target.id === "__ai_runtime_inspector_overlay__") return
-
-  // Skip sensitive elements
+  if (cachedOverlayIds.has(target.id)) return
   if (isSensitiveElement(target)) return
-
-  // Prevent the click from reaching the page
   e.preventDefault()
   e.stopPropagation()
   e.stopImmediatePropagation()
 
-  selectedElement = target
-
-  // Update overlay to "selected" (orange) style
-  const rect = target.getBoundingClientRect()
-  showSelectedOverlay({
-    top: rect.top,
-    left: rect.left,
-    width: rect.width,
-    height: rect.height,
-    right: rect.right,
-    bottom: rect.bottom,
-  })
-
-  // Build lightweight ElementInfo and emit
-  const elementInfo = buildElementInfo(target)
-  notifyElementSelected(elementInfo)
-
-  // Generate CompressedContext and forward to background for server delivery
-  try {
-    if (target instanceof HTMLElement) {
-      const compressed = compressContext(target)
-      chrome.runtime.sendMessage({
-        type: "CONTEXT_CAPTURED",
-        payload: {
-          context: compressed,
-          url: window.location.href,
-          pageTitle: document.title,
-        },
-      })
-    }
-  } catch (err) {
-    console.warn("[AI Runtime Inspector] Failed to compress context:", err)
-  }
-}
-
-/**
- * keydown — Escape cancels the inspector.
- */
-function handleKeyDown(e: KeyboardEvent): void {
-  if (!active) return
-
-  if (e.key === "Escape") {
-    e.preventDefault()
-    e.stopPropagation()
-    setInspectorActive(false)
-  }
-}
-
-/**
- * scroll — reposition overlay for the selected/hovered element.
- */
-function handleScroll(): void {
-  if (!active) return
-
-  const target = selectedElement || lastHoveredElement
-  if (!target) return
-
-  // Element may have been removed from DOM
-  if (!document.contains(target)) {
-    hideOverlay()
-    lastHoveredElement = null
-    if (target === selectedElement) {
-      selectedElement = null
-    }
-    return
-  }
-
-  const rect = target.getBoundingClientRect()
-  const isCurrentlySelected = target === selectedElement
-
-  if (isCurrentlySelected) {
-    showSelectedOverlay({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-      right: rect.right,
-      bottom: rect.bottom,
-    })
+  // Dynamic multi-select detection
+  let isMultiSelect = false
+  if (shortcutConfig.multiSelectKey === "Meta") {
+    isMultiSelect = e.metaKey && altHeld
   } else {
-    showOverlay({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-      right: rect.right,
-      bottom: rect.bottom,
+    isMultiSelect = e.ctrlKey && altHeld
+  }
+
+  if (isMultiSelect) { addSelection(target) } else { clearSelections(); addSelection(target) }
+  hideOverlay()
+}
+
+function onScroll(): void {
+  if (selections.size === 0) return
+  const positions = new Map<string, { rect: { top: number; left: number; width: number; height: number; right: number; bottom: number }; labelIndex: number }>()
+  for (const [id, entry] of selections) {
+    if (!document.contains(entry.element)) { selections.delete(id); continue }
+    const rect = entry.element.getBoundingClientRect()
+    positions.set(id, {
+      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom },
+      labelIndex: LABEL_SEQUENCE.indexOf(entry.label),
     })
   }
+  updateAllOverlayPositions(positions)
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// Selection management
 
-/**
- * Build a lightweight ElementInfo from a DOM element.
- * This is intentionally minimal — deep analysis happens in the collector module.
- */
-function buildElementInfo(el: Element): ElementInfo {
-  const textContent =
-    el instanceof HTMLElement
-      ? (el.innerText || "").slice(0, DEFAULT_CONFIG.maxTextLength)
-      : ""
-
-  return {
-    tagName: el.tagName.toLowerCase(),
-    className: el.className || "",
-    id: el.id || "",
-    innerText: textContent,
+function addSelection(element: Element): void {
+  // Skip if element is already selected
+  for (const [, entry] of selections) {
+    if (entry.element === element) return
   }
-}
+  const id = generateId()
+  const label = LABEL_SEQUENCE[nextLabelIndex % LABEL_SEQUENCE.length]
+  nextLabelIndex++
+  const elementInfo = buildElementInfo(element)
+  let context: CompressedContext | null = null
+  try { if (element instanceof HTMLElement) { context = compressContext(element) } } catch (err) { console.warn("[DOM Context] compress failed:", err) }
+  if (!context) return
+  selections.set(id, { id, label, element, elementInfo, context })
+  const rect = element.getBoundingClientRect()
+  showSelectedElementOverlay(id, { top: rect.top, left: rect.left, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom }, label, LABEL_SEQUENCE.indexOf(label))
+  cachedOverlayIds = new Set(getAllOverlayIds())
+  notifyMultiSelected()
+  sendContextToServer(id, label, context)
+  updatePanel()
 
-/**
- * Check if an element matches any sensitive selector (e.g. password inputs).
- */
-function isSensitiveElement(el: Element): boolean {
-  for (const selector of SENSITIVE_SELECTORS) {
-    try {
-      if (el.matches && el.matches(selector)) {
-        return true
-      }
-    } catch {
-      // Invalid selector — skip
+  // Show inline prompt near the selected element
+  if (shortcutConfig.showInlinePrompt !== false) {
+    if (isInlinePromptVisible()) {
+      moveInlinePrompt(rect)
+    } else {
+      showInlinePrompt(rect)
     }
   }
+}
+
+// Helpers
+
+function buildElementInfo(el: Element): ElementInfo {
+  const t = el instanceof HTMLElement ? (el.innerText || "").slice(0, DEFAULT_CONFIG.maxTextLength) : ""
+  return { tagName: el.tagName.toLowerCase(), className: el.className || "", id: el.id || "", innerText: t }
+}
+
+function isSensitiveElement(el: Element): boolean {
+  for (const s of SENSITIVE_SELECTORS) { try { if (el.matches && el.matches(s)) return true } catch {} }
   return false
 }
 
-/**
- * Notify the background/popup that an element was selected.
- */
-function notifyElementSelected(info: ElementInfo): void {
-  try {
-    chrome.runtime.sendMessage({
-      type: "ELEMENT_SELECTED",
-      payload: info,
-    })
-  } catch (err) {
-    // Extension context may be invalidated (e.g. page navigated)
-    console.warn("[AI Runtime Inspector] Failed to send ELEMENT_SELECTED:", err)
+function notifyMultiSelected(): void {
+  const contexts: SelectedContext[] = []
+  for (const [id, entry] of selections) {
+    contexts.push({ id, label: entry.label, description: "", elementInfo: entry.elementInfo, context: entry.context, url: window.location.href, pageTitle: document.title })
   }
+  try { chrome.runtime.sendMessage({ type: "MULTI_ELEMENTS_SELECTED", payload: { contexts, tabId: undefined } }) } catch {}
 }
 
-/**
- * Notify the background/popup of inspector status change.
- */
+function sendContextToServer(id: string, label: string, context: CompressedContext): void {
+  try { chrome.runtime.sendMessage({ type: "CONTEXT_CAPTURED", payload: { context, url: window.location.href, pageTitle: document.title, selectionId: id, selectionLabel: label } }) } catch {}
+}
+
 function notifyStatus(isActive: boolean): void {
-  try {
-    chrome.runtime.sendMessage({
-      type: "INSPECTOR_STATUS",
-      payload: { active: isActive },
-    })
-  } catch (err) {
-    console.warn("[AI Runtime Inspector] Failed to send INSPECTOR_STATUS:", err)
-  }
+  try { chrome.runtime.sendMessage({ type: "INSPECTOR_STATUS", payload: { active: isActive } }) } catch {}
 }
 
-// ---------------------------------------------------------------------------
-// Message listener — respond to TOGGLE_INSPECTOR from popup/background
-// ---------------------------------------------------------------------------
+function updatePanel(): void {
+  try { updateCards(selections) } catch { /* panel not yet created */ }
+}
 
-chrome.runtime.onMessage.addListener(
-  (message: { type: string; payload?: unknown }, _sender, sendResponse) => {
-    if (message.type === "TOGGLE_INSPECTOR") {
-      const payload = message.payload as { active: boolean } | undefined
-      if (payload && typeof payload.active === "boolean") {
-        setInspectorActive(payload.active)
-      }
-      sendResponse({ success: true })
-      return true // Keep the message channel open for async response
-    }
+// Create floating panel on module load
+try { createPanel() } catch { /* ignore */ }
 
-    sendResponse({ success: false, error: "Unknown message type" })
-    return false
+// Message listener
+
+chrome.runtime.onMessage.addListener((message: { type: string; payload?: unknown }, _sender, sendResponse) => {
+  if (message.type === "TOGGLE_INSPECTOR") {
+    const p = message.payload as { active: boolean } | undefined
+    if (p && typeof p.active === "boolean") setInspectorActive(p.active)
+    sendResponse({ success: true }); return true
   }
-)
-
-// ---------------------------------------------------------------------------
-// Cleanup on page unload
-// ---------------------------------------------------------------------------
-
-window.addEventListener("unload", () => {
-  detachListeners()
-  cleanup()
+  if (message.type === "CLEAR_SELECTIONS") { clearSelections(); sendResponse({ success: true }); return false }
+  if (message.type === "REMOVE_SELECTION") {
+    const p = message.payload as { id: string } | undefined
+    if (p && p.id && selections.has(p.id)) { selections.delete(p.id); removeSelectedOverlay(p.id); cachedOverlayIds = new Set(getAllOverlayIds()); notifyMultiSelected(); updatePanel() }
+    sendResponse({ success: true }); return false
+  }
+  if (message.type === "SETTINGS_UPDATED") {
+    const config = message.payload as ShortcutConfig | undefined
+    if (config) {
+      shortcutConfig = { ...DEFAULT_SHORTCUT_CONFIG, ...config }
+    }
+    sendResponse({ success: true }); return false
+  }
+  sendResponse({ success: false, error: "Unknown message type" }); return false
 })
+
+window.addEventListener("unload", () => { deactivateInspect(); toggleActive = false; altHeld = false; destroyAllOverlays(); destroyPanel(); destroyInlinePrompt(); selections.clear() })

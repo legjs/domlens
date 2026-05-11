@@ -18,6 +18,7 @@ import { collectElementData } from './collector';
 import { analyzeLayoutChain } from './layout';
 import { analyzeReactComponent } from './react';
 import { detectConstraints } from './analyzer';
+import { generateCSSSelector, generateXPath, generateHTMLSnippet, collectAccessibilityInfo } from './selector';
 
 /**
  * Compress all context for a selected DOM element into a structured object.
@@ -72,6 +73,18 @@ export function compressContext(element: HTMLElement): CompressedContext {
   if (Object.keys(elementData.styles).length > 0) {
     context.selectedElement.styles = elementData.styles;
   }
+
+  // Attach CSS selector
+  context.selectedElement.cssSelector = generateCSSSelector(element);
+
+  // Attach XPath
+  context.selectedElement.xpath = generateXPath(element);
+
+  // Attach HTML snippet
+  context.selectedElement.html = generateHTMLSnippet(element);
+
+  // Attach accessibility info
+  context.selectedElement.accessibility = collectAccessibilityInfo(element);
 
   return context;
 }

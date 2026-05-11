@@ -1,31 +1,27 @@
 import { create } from "zustand"
-import type { ElementInfo, CompressedContext } from "~shared/types"
+import type { ElementInfo, SelectedContext, CompressedContext, ShortcutConfig } from "~shared/types"
+import { DEFAULT_SHORTCUT_CONFIG, SK_SHORTCUT_CONFIG } from "~shared/constants"
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface SelectedElementDisplay {
-  tag: string
-  className: string
-  id: string
-  text: string
-  size?: string
-  position?: string
-  componentName?: string
-}
-
 interface PopupState {
+  /** Real-time inspect state (toggle ON or Alt held) — for UI display */
   inspectorActive: boolean
-  selectedElement: SelectedElementDisplay | null
-  compressedContext: CompressedContext | null
+  /** Toggle button state — persisted across popup close/reopen */
+  toggleActive: boolean
+  selectedContexts: SelectedContext[]
   promptText: string
   copied: boolean
   serverPort: number | null
 
   setInspectorActive: (active: boolean) => void
-  setSelectedElement: (info: ElementInfo) => void
-  setCompressedContext: (context: CompressedContext | null) => void
+  setToggleActive: (active: boolean) => void
+  setSelectedContexts: (contexts: SelectedContext[]) => void
+  updateDescription: (id: string, description: string) => void
+  removeContext: (id: string) => void
+  clearContexts: () => void
   setPromptText: (text: string) => void
   setCopied: (value: boolean) => void
   setServerPort: (port: number | null) => void
@@ -36,8 +32,8 @@ interface PopupState {
 // Storage keys & persist helpers
 // ---------------------------------------------------------------------------
 
-const SK_ACTIVE = "inspector_active"
-const SK_ELEMENT = "selected_element"
+const SK_TOGGLE = "inspector_toggle"
+const SK_CONTEXTS = "selected_contexts"
 const SK_PROMPT = "prompt_text"
 
 async function save(key: string, value: unknown) {
@@ -51,10 +47,11 @@ async function save(key: string, value: unknown) {
 /** Load persisted state from chrome.storage.local (call on popup mount) */
 export async function loadPersistedState(): Promise<Partial<PopupState>> {
   try {
-    const r = await chrome.storage.local.get([SK_ACTIVE, SK_ELEMENT, SK_PROMPT])
+    const r = await chrome.storage.local.get([SK_TOGGLE, SK_CONTEXTS, SK_PROMPT])
     return {
-      inspectorActive: r[SK_ACTIVE] ?? false,
-      selectedElement: r[SK_ELEMENT] ?? null,
+      toggleActive: r[SK_TOGGLE] ?? true,
+      inspectorActive: r[SK_TOGGLE] ?? true,
+      selectedContexts: r[SK_CONTEXTS] ?? [],
       promptText: r[SK_PROMPT] ?? "",
     }
   } catch {
@@ -68,30 +65,50 @@ export async function loadPersistedState(): Promise<Partial<PopupState>> {
 
 const usePopupStore = create<PopupState>((set) => ({
   inspectorActive: false,
-  selectedElement: null,
-  compressedContext: null,
+  toggleActive: false,
+  selectedContexts: [],
   promptText: "",
   copied: false,
   serverPort: null,
 
+  /** Update real-time inspect state (from Alt key or content script status) — NOT persisted */
   setInspectorActive: (active: boolean) => {
     set({ inspectorActive: active })
-    save(SK_ACTIVE, active)
   },
 
-  setSelectedElement: (info: ElementInfo) => {
-    const display: SelectedElementDisplay = {
-      tag: info.tagName,
-      className: info.className,
-      id: info.id,
-      text: info.innerText,
-    }
-    set({ selectedElement: display })
-    save(SK_ELEMENT, display)
+  /** Update toggle state (from popup button) — persisted */
+  setToggleActive: (active: boolean) => {
+    set({ toggleActive: active, inspectorActive: active })
+    save(SK_TOGGLE, active)
   },
 
-  setCompressedContext: (context: CompressedContext | null) =>
-    set({ compressedContext: context }),
+  setSelectedContexts: (contexts: SelectedContext[]) => {
+    set({ selectedContexts: contexts })
+    save(SK_CONTEXTS, contexts)
+  },
+
+  updateDescription: (id: string, description: string) => {
+    set((state) => {
+      const updated = state.selectedContexts.map((ctx) =>
+        ctx.id === id ? { ...ctx, description } : ctx
+      )
+      save(SK_CONTEXTS, updated)
+      return { selectedContexts: updated }
+    })
+  },
+
+  removeContext: (id: string) => {
+    set((state) => {
+      const updated = state.selectedContexts.filter((ctx) => ctx.id !== id)
+      save(SK_CONTEXTS, updated)
+      return { selectedContexts: updated }
+    })
+  },
+
+  clearContexts: () => {
+    set({ selectedContexts: [] })
+    save(SK_CONTEXTS, [])
+  },
 
   setPromptText: (text: string) => {
     set({ promptText: text })
@@ -106,8 +123,8 @@ const usePopupStore = create<PopupState>((set) => ({
   reset: () =>
     set({
       inspectorActive: false,
-      selectedElement: null,
-      compressedContext: null,
+      toggleActive: false,
+      selectedContexts: [],
       promptText: "",
       copied: false,
       serverPort: null,

@@ -263,3 +263,52 @@ export const MAX_CONTEXT_HISTORY = 20;
 
 /** chrome.storage key for caching the discovered server port */
 export const SK_SERVER_PORT = "runtime_server_port";
+
+// ============================================================
+// Multi-Select Configuration
+// ============================================================
+
+/** Letter labels for multi-select (A-Z) */
+export const LABEL_SEQUENCE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** Overlay colors for each label position */
+export const LABEL_COLORS = [
+  { bg: "#ff6b6b", text: "#fff" },  // A - red
+  { bg: "#ffa94d", text: "#fff" },  // B - orange
+  { bg: "#ffd43b", text: "#333" },  // C - yellow
+  { bg: "#69db7c", text: "#fff" },  // D - green
+  { bg: "#4dabf7", text: "#fff" },  // E - blue
+  { bg: "#9775fa", text: "#fff" },  // F - purple
+  { bg: "#f783ac", text: "#fff" },  // G - pink
+  { bg: "#20c997", text: "#fff" },  // H - teal
+  { bg: "#ff922b", text: "#fff" },  // I - deep orange
+  { bg: "#845ef7", text: "#fff" },  // J - violet
+];
+
+/** Overlay ID prefix for multi-select overlays */
+export const MULTI_OVERLAY_PREFIX = "__dom_ctx_overlay_";
+
+/** Label badge overlay ID prefix */
+export const LABEL_BADGE_PREFIX = "__dom_ctx_badge_";
+
+// ============================================================
+// Shortcut Configuration
+// ============================================================
+
+/** chrome.storage key for shortcut configuration */
+export const SK_SHORTCUT_CONFIG = "shortcut_config";
+
+/** Available inspect keys */
+export const INSPECT_KEYS = ["Alt", "Shift", "Control"] as const;
+
+/** Available multi-select keys */
+export const MULTI_SELECT_KEYS = ["Control", "Meta"] as const;
+
+/** Default shortcut configuration */
+export const DEFAULT_SHORTCUT_CONFIG: import("./types").ShortcutConfig = {
+  inspectKey: "Alt",
+  multiSelectKey: "Control",
+  inspectRequiresShortcut: true,
+  panelVisible: false,
+  showInlinePrompt: true,
+};

@@ -1,0 +1,85 @@
+---
+title: "DOM Context 压缩引擎工作原理"
+date: "2026-05-11"
+excerpt: "深入解析 DOM Context 的智能压缩引擎，如何让 DOM 数据高效地被 AI 消费。"
+author: "DOM Context 团队"
+---
+
+## 问题：原始 DOM 数据过于冗长
+
+单个 DOM 元素在包含所有计算样式、布局属性和属性时，可能产生数百行数据。对于 AI 编程助手来说，这造成了显著的 token 开销。
+
+考虑一个简单的 `<button>` 元素：
+
+```html
+<button class="btn btn-primary btn-lg rounded-md shadow-sm
+  hover:shadow-md transition-all duration-200
+  focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+  disabled:opacity-50 disabled:cursor-not-allowed"
+  style="margin-top: 16px; padding: 12px 24px;
+  font-size: 16px; line-height: 1.5;
+  color: rgb(255, 255, 255);
+  background-color: rgb(37, 99, 235);
+  border-radius: 8px; border: none;
+  cursor: pointer;">
+  提交
+</button>
+```
+
+这个元素的完整计算样式对象包含**超过 300 个属性**。其中大多数与理解元素的用途和结构无关。
+
+## 我们的方案
+
+DOM Context 的压缩引擎使用多阶段处理管道：
+
+### 1. 结构提取
+
+我们不序列化完整的 DOM 树，而是只提取结构关键信息：
+
+- 标签名和语义角色
+- 直接类名和 ID
+- 文本内容（截断）
+- 关键布局属性（位置、显示方式、尺寸）
+
+### 2. 样式优先级排序
+
+我们维护了一个精心策划的"重要"CSS 属性列表，这些属性对理解布局和设计至关重要：
+
+- **布局**：`display`、`position`、`flex-direction`、`grid-template-*`
+- **盒模型**：`width`、`height`、`margin`、`padding`、`border`
+- **排版**：`font-size`、`font-weight`、`line-height`、`color`
+- **视觉**：`background-color`、`border-radius`、`box-shadow`、`opacity`
+
+### 3. 冗余消除
+
+继承和默认值会被移除。如果元素从父元素继承了 `font-family` 且未覆盖，我们不会包含它。
+
+### 4. 上下文格式化
+
+最终输出格式化为 AI 模型可以高效解析的简洁 Markdown：
+
+```markdown
+## 元素 A: <button class="btn btn-primary">
+- 布局: block, 120x48px, margin-top: 16px
+- 排版: 16px/1.5, 白色, font-weight: 500
+- 视觉: blue-600 背景, 8px 圆角, shadow-sm
+- 内容: "提交"
+- 位置: <form> 内, (240, 480)
+```
+
+## 效果
+
+我们的压缩通常实现：
+
+- 相比原始 DOM 序列化，**减少 70-90% 的 token 数量**
+- **保留**所有布局关键信息
+- **可读格式**，AI 模型可以高效推理
+
+## 未来改进
+
+我们正在开发：
+
+- **语义分组**：自动识别组件边界
+- **差异压缩**：仅发送自上次捕获以来的变化
+- **自定义过滤器**：用户定义的包含/排除规则
+- **自适应压缩**：学习哪些属性对特定 AI 任务最重要

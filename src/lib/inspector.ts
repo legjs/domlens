@@ -22,19 +22,21 @@ import {
   removeAllSelectedOverlays,
   removeSelectedOverlay,
   updateAllOverlayPositions,
-  getAllOverlayIds,
+  setDeleteCallback,
 } from "~lib/overlay"
 import { createPanel, updateCards, destroyPanel } from "~lib/panel"
 import { showInlinePrompt, moveInlinePrompt, hideInlinePrompt, destroyInlinePrompt, isInlinePromptVisible } from "~lib/inline-prompt"
+import { isPointOverUI } from "~lib/shadow-host"
 
 let inspectActive = false
 let altHeld = false
 let toggleActive = false
-let cachedOverlayIds: Set<string> = new Set()
 let lastMoveTime = 0
 const MOVE_THROTTLE_MS = 16
 let lastHoveredElement: Element | null = null
 let scrollAttached = false
+let lastMouseX = 0
+let lastMouseY = 0
 let shortcutConfig: ShortcutConfig = { ...DEFAULT_SHORTCUT_CONFIG }
 
 // Load shortcut config from storage
@@ -84,7 +86,6 @@ function activateInspect(): void {
   document.addEventListener("mousemove", onMouseMove, true)
   document.addEventListener("click", onClick, true)
   attachScrollListener()
-  cachedOverlayIds = new Set(getAllOverlayIds())
   notifyStatus(true)
 }
 
@@ -128,7 +129,6 @@ export function clearSelections(): void {
   selections.clear()
   nextLabelIndex = 0
   removeAllSelectedOverlays()
-  cachedOverlayIds = new Set(getAllOverlayIds())
   if (!inspectActive) detachScrollListener()
   hideInlinePrompt()
   updatePanel()
@@ -152,11 +152,23 @@ function onKeyDown(e: KeyboardEvent): void {
       clearSelections()
       deactivateInspect()
     } else {
-      // Remove the most recently added selection
-      const lastKey = Array.from(selections.keys()).pop()!
-      selections.delete(lastKey)
-      removeSelectedOverlay(lastKey)
-      cachedOverlayIds = new Set(getAllOverlayIds())
+      // Find which selected element the mouse is currently over
+      let targetKey: string | undefined
+      for (const [id, entry] of selections) {
+        if (!document.contains(entry.element)) continue
+        const r = entry.element.getBoundingClientRect()
+        if (lastMouseX >= r.left && lastMouseX <= r.right &&
+            lastMouseY >= r.top && lastMouseY <= r.bottom) {
+          targetKey = id
+          break
+        }
+      }
+      // Fallback: remove the last added selection
+      if (!targetKey) {
+        targetKey = Array.from(selections.keys()).pop()!
+      }
+      selections.delete(targetKey)
+      removeSelectedOverlay(targetKey)
       notifyMultiSelected()
       updatePanel()
     }
@@ -176,6 +188,12 @@ function onKeyUp(e: KeyboardEvent): void {
 document.addEventListener("keydown", onKeyDown, true)
 document.addEventListener("keyup", onKeyUp, true)
 
+// Always track mouse position for ESC-specific-removal hit-testing
+document.addEventListener("mousemove", (e: MouseEvent) => {
+  lastMouseX = e.clientX
+  lastMouseY = e.clientY
+}, true)
+
 // Mouse listeners (attached/detached dynamically)
 
 function onMouseMove(e: MouseEvent): void {
@@ -187,8 +205,7 @@ function onMouseMove(e: MouseEvent): void {
   lastMoveTime = now
   const target = document.elementFromPoint(e.clientX, e.clientY)
   if (!target) { hideOverlay(); lastHoveredElement = null; return }
-  if (target.closest('#dom-ctx-panel, #dom-ctx-inline-prompt')) return
-  if (cachedOverlayIds.has(target.id)) return
+  if (isPointOverUI(e.clientX, e.clientY)) return
   if (target === lastHoveredElement) return
   lastHoveredElement = target
   if (isSensitiveElement(target)) { hideOverlay(); return }
@@ -204,7 +221,7 @@ function onClick(e: MouseEvent): void {
 
   const target = document.elementFromPoint(e.clientX, e.clientY)
   if (!target) return
-  if (cachedOverlayIds.has(target.id)) return
+  if (isPointOverUI(e.clientX, e.clientY)) return
   if (isSensitiveElement(target)) return
   e.preventDefault()
   e.stopPropagation()
@@ -216,6 +233,20 @@ function onClick(e: MouseEvent): void {
     isMultiSelect = e.metaKey && altHeld
   } else {
     isMultiSelect = e.ctrlKey && altHeld
+  }
+
+  // Toggle: if target is already selected, remove that specific selection
+  for (const [id, entry] of selections) {
+    if (entry.element === target) {
+      selections.delete(id)
+      removeSelectedOverlay(id)
+      notifyMultiSelected()
+      updatePanel()
+      hideInlinePrompt()
+      if (selections.size === 0) { hideOverlay(); if (!inspectActive) detachScrollListener() }
+      hideOverlay()
+      return
+    }
   }
 
   if (isMultiSelect) { addSelection(target) } else { clearSelections(); addSelection(target) }
@@ -253,7 +284,6 @@ function addSelection(element: Element): void {
   selections.set(id, { id, label, element, elementInfo, context })
   const rect = element.getBoundingClientRect()
   showSelectedElementOverlay(id, { top: rect.top, left: rect.left, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom }, label, LABEL_SEQUENCE.indexOf(label))
-  cachedOverlayIds = new Set(getAllOverlayIds())
   notifyMultiSelected()
   sendContextToServer(id, label, context)
   updatePanel()
@@ -303,6 +333,16 @@ function updatePanel(): void {
 // Create floating panel on module load
 try { createPanel() } catch { /* ignore */ }
 
+// Set up delete button callback for overlay badges
+setDeleteCallback((id: string) => {
+  selections.delete(id)
+  removeSelectedOverlay(id)
+  notifyMultiSelected()
+  updatePanel()
+  hideInlinePrompt()
+  if (selections.size === 0 && !inspectActive) detachScrollListener()
+})
+
 // Message listener
 
 chrome.runtime.onMessage.addListener((message: { type: string; payload?: unknown }, _sender, sendResponse) => {
@@ -314,7 +354,7 @@ chrome.runtime.onMessage.addListener((message: { type: string; payload?: unknown
   if (message.type === "CLEAR_SELECTIONS") { clearSelections(); sendResponse({ success: true }); return false }
   if (message.type === "REMOVE_SELECTION") {
     const p = message.payload as { id: string } | undefined
-    if (p && p.id && selections.has(p.id)) { selections.delete(p.id); removeSelectedOverlay(p.id); cachedOverlayIds = new Set(getAllOverlayIds()); notifyMultiSelected(); updatePanel() }
+    if (p && p.id && selections.has(p.id)) { selections.delete(p.id); removeSelectedOverlay(p.id); notifyMultiSelected(); updatePanel() }
     sendResponse({ success: true }); return false
   }
   if (message.type === "SETTINGS_UPDATED") {

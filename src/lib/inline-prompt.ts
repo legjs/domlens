@@ -7,6 +7,7 @@
 
 import type { SelectedContext } from "~shared/types"
 import { getSelections } from "~lib/inspector"
+import { getShadowRoot } from "~lib/shadow-host"
 
 const INLINE_PROMPT_ID = "dom-ctx-inline-prompt"
 let promptEl: HTMLDivElement | null = null
@@ -30,6 +31,7 @@ const STYLES = {
     gap: 6px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 12px;
+    pointer-events: auto;
   `,
   textarea: `
     width: 100%;
@@ -155,7 +157,7 @@ function createPrompt(): void {
   promptEl.addEventListener("mousedown", (e) => e.stopPropagation())
   promptEl.addEventListener("click", (e) => e.stopPropagation())
 
-  document.documentElement.appendChild(promptEl)
+  getShadowRoot().appendChild(promptEl)
 }
 
 function handleSend(): void {
@@ -271,7 +273,7 @@ export function isInlinePromptVisible(): boolean {
  * Destroy the inline prompt element.
  */
 export function destroyInlinePrompt(): void {
-  if (promptEl && document.contains(promptEl)) {
+  if (promptEl && getShadowRoot().contains(promptEl)) {
     promptEl.remove()
   }
   promptEl = null

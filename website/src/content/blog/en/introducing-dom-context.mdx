@@ -1,0 +1,65 @@
+---
+title: "Introducing DOM Context: Runtime DOM Awareness for AI Agents"
+date: "2026-05-11"
+excerpt: "DOM Context is a Chrome extension that bridges the gap between AI coding agents and the live DOM. Learn how it works and why we built it."
+author: "DOM Context Team"
+---
+
+## What is DOM Context?
+
+DOM Context is a **Chrome extension** that provides AI coding agents with **runtime DOM context awareness**. Instead of relying on static screenshots or manual descriptions, AI tools can now access structured, real-time information about any element on a web page.
+
+## Why We Built It
+
+As AI coding assistants become more powerful, the bottleneck has shifted from "can the AI write code?" to "does the AI understand what already exists on the page?"
+
+Traditional approaches require developers to:
+
+1. Take screenshots and upload them
+2. Manually describe DOM structure in prompts
+3. Copy-paste HTML source code
+4. Explain CSS layout constraints verbally
+
+DOM Context automates all of this. With a single hover or click, the extension captures comprehensive element data and makes it available through a standardized **Model Context Protocol (MCP)** interface.
+
+## Key Features
+
+### Element Inspector
+
+Hover over any DOM element to instantly see its tag, classes, dimensions, computed styles, and layout properties. The inspector provides a visual overlay showing the box model (margin, border, padding, content).
+
+### Multi-Element Selection
+
+Hold `Ctrl` and click to select multiple elements. Each selection is automatically labeled (A through J) and stored with full context data. This is perfect for describing component relationships to AI agents.
+
+### MCP Integration
+
+DOM Context runs a local MCP server that exposes five tools:
+
+- `get_latest_context` — Get the most recent DOM capture
+- `get_prompt` — Get a formatted Markdown prompt
+- `list_contexts` — Browse capture history
+- `clear_contexts` — Reset history
+- `get_user_prompt` — Get prompts from the floating panel
+
+### Context Compression
+
+The built-in compression engine reduces DOM context to the most relevant information, making it efficient for AI consumption without losing important structural details.
+
+## Getting Started
+
+1. Install the DOM Context Chrome extension
+2. Start the local runtime server with `pnpm runtime:start`
+3. Configure MCP in your AI tool's settings
+4. Start inspecting elements and let your AI tools do the rest
+
+## What's Next
+
+We're actively working on:
+
+- Support for more AI tools beyond Claude Code
+- Enhanced accessibility analysis
+- Custom selection filters and rules
+- Collaborative context sharing for teams
+
+Stay tuned for more updates, and feel free to contribute on GitHub!

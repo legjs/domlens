@@ -1,0 +1,85 @@
+---
+title: "How DOM Context Compression Works"
+date: "2026-05-11"
+excerpt: "A deep dive into DOM Context's intelligent compression engine that makes DOM data efficient for AI consumption."
+author: "DOM Context Team"
+---
+
+## The Problem: Raw DOM is Too Verbose
+
+A single DOM element can generate hundreds of lines of data when you include all computed styles, layout properties, and attributes. For AI coding assistants, this creates a significant token overhead.
+
+Consider a simple `<button>` element:
+
+```html
+<button class="btn btn-primary btn-lg rounded-md shadow-sm
+  hover:shadow-md transition-all duration-200
+  focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+  disabled:opacity-50 disabled:cursor-not-allowed"
+  style="margin-top: 16px; padding: 12px 24px;
+  font-size: 16px; line-height: 1.5;
+  color: rgb(255, 255, 255);
+  background-color: rgb(37, 99, 235);
+  border-radius: 8px; border: none;
+  cursor: pointer;">
+  Submit
+</button>
+```
+
+The full computed style object for this element contains **over 300 properties**. Most are irrelevant for understanding the element's purpose and structure.
+
+## Our Approach
+
+DOM Context's compression engine uses a multi-stage pipeline:
+
+### 1. Structural Extraction
+
+Instead of serializing the full DOM tree, we extract only the structural essentials:
+
+- Tag name and semantic role
+- Direct classes and IDs
+- Text content (truncated)
+- Key layout properties (position, display, dimensions)
+
+### 2. Style Prioritization
+
+We maintain a curated list of "important" CSS properties that matter for understanding layout and design:
+
+- **Layout**: `display`, `position`, `flex-direction`, `grid-template-*`
+- **Box Model**: `width`, `height`, `margin`, `padding`, `border`
+- **Typography**: `font-size`, `font-weight`, `line-height`, `color`
+- **Visual**: `background-color`, `border-radius`, `box-shadow`, `opacity`
+
+### 3. Redundancy Elimination
+
+Inherited and default values are removed. If an element inherits `font-family` from its parent and hasn't overridden it, we don't include it.
+
+### 4. Contextual Formatting
+
+The final output is formatted as clean Markdown that AI models can parse efficiently:
+
+```markdown
+## Element A: <button class="btn btn-primary">
+- Layout: block, 120x48px, margin-top: 16px
+- Typography: 16px/1.5, white, font-weight: 500
+- Visual: blue-600 bg, 8px radius, shadow-sm
+- Content: "Submit"
+- Position: inside <form> at (240, 480)
+```
+
+## Results
+
+Our compression typically achieves:
+
+- **70-90% reduction** in token count compared to raw DOM serialization
+- **Preservation** of all layout-critical information
+- **Readable format** that AI models can reason about effectively
+
+## Future Improvements
+
+We're working on:
+
+- **Semantic grouping**: Automatically identifying component boundaries
+- **Diff compression**: Only sending changes since the last capture
+- **Custom filters**: User-defined rules for what to include/exclude
+- **Adaptive compression**: Learning which properties matter most for specific AI tasks

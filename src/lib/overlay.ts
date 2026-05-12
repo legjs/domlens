@@ -9,6 +9,7 @@
 
 import { OVERLAY_STYLES, DEFAULT_CONFIG, LABEL_COLORS, MULTI_OVERLAY_PREFIX, LABEL_BADGE_PREFIX } from "~shared/constants"
 import type { BoxModel } from "~shared/types"
+import { getShadowRoot } from "~lib/shadow-host"
 
 /** Overlay element states */
 export type OverlayState = "hover" | "selected" | "hidden"
@@ -44,6 +45,17 @@ let selectedOverlays: Map<string, HTMLDivElement> = new Map()
 /** Label badges map: key -> element */
 let labelBadges: Map<string, HTMLDivElement> = new Map()
 
+/** Delete buttons map: key -> element */
+let deleteButtons: Map<string, HTMLDivElement> = new Map()
+
+/** Callback invoked when a delete button is clicked */
+let onDeleteSelection: ((key: string) => void) | null = null
+
+/** Set the callback for delete button clicks (called from inspector) */
+export function setDeleteCallback(cb: (key: string) => void): void {
+  onDeleteSelection = cb
+}
+
 // ---------------------------------------------------------------------------
 // Hover overlay (single, for mousemove tracking)
 // ---------------------------------------------------------------------------
@@ -53,7 +65,7 @@ let labelBadges: Map<string, HTMLDivElement> = new Map()
  * Called once; subsequent calls return the existing element.
  */
 function createHoverOverlay(): HTMLDivElement {
-  if (hoverOverlayElement && document.contains(hoverOverlayElement)) {
+  if (hoverOverlayElement && getShadowRoot().contains(hoverOverlayElement)) {
     return hoverOverlayElement
   }
 
@@ -73,7 +85,7 @@ function createHoverOverlay(): HTMLDivElement {
 
   el.style.setProperty("z-index", "2147483646", "important")
   applyStateStyles(el, "hidden")
-  document.documentElement.appendChild(el)
+  getShadowRoot().appendChild(el)
   hoverOverlayElement = el
 
   return el
@@ -101,7 +113,7 @@ export function showSelectedOverlay(rect: BoxModel): void {
  * Hide the hover overlay (keep in DOM for reuse).
  */
 export function hideOverlay(): void {
-  if (hoverOverlayElement && document.contains(hoverOverlayElement)) {
+  if (hoverOverlayElement && getShadowRoot().contains(hoverOverlayElement)) {
     applyStateStyles(hoverOverlayElement, "hidden")
   }
 }
@@ -125,7 +137,7 @@ export function showSelectedElementOverlay(
 ): void {
   // Create/update overlay
   let overlay = selectedOverlays.get(key)
-  if (!overlay || !document.contains(overlay)) {
+  if (!overlay || !getShadowRoot().contains(overlay)) {
     overlay = document.createElement("div")
     overlay.id = MULTI_OVERLAY_PREFIX + key
     overlay.setAttribute("aria-hidden", "true")
@@ -147,7 +159,7 @@ export function showSelectedElementOverlay(
     overlay.style.setProperty("background", `${colorSet.bg}15`)
     overlay.style.setProperty("box-shadow", `0 0 8px ${colorSet.bg}80`)
 
-    document.documentElement.appendChild(overlay)
+    getShadowRoot().appendChild(overlay)
     selectedOverlays.set(key, overlay)
   }
 
@@ -155,7 +167,7 @@ export function showSelectedElementOverlay(
 
   // Create/update label badge
   let badge = labelBadges.get(key)
-  if (!badge || !document.contains(badge)) {
+  if (!badge || !getShadowRoot().contains(badge)) {
     badge = document.createElement("div")
     badge.id = LABEL_BADGE_PREFIX + key
     badge.setAttribute("aria-hidden", "true")
@@ -168,26 +180,71 @@ export function showSelectedElementOverlay(
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 4px 0 4px 0;
+      width: 16px;
+      height: 16px;
+      border-radius: 3px 3px 0 0;
       background: ${colorSet.bg};
       color: ${colorSet.text};
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       font-family: monospace;
       line-height: 1;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.3);
     `
     badge.textContent = label
 
-    document.documentElement.appendChild(badge)
+    getShadowRoot().appendChild(badge)
     labelBadges.set(key, badge)
   }
 
-  // Position badge at top-left of element
-  badge.style.top = `${rect.top}px`
+  // Position badge above top-left of element
+  badge.style.top = `${rect.top - 16}px`
   badge.style.left = `${rect.left}px`
+
+  // Create/update delete button above top-right
+  let delBtn = deleteButtons.get(key)
+  if (!delBtn || !getShadowRoot().contains(delBtn)) {
+    delBtn = document.createElement("div")
+    delBtn.setAttribute("aria-hidden", "true")
+    delBtn.dataset.domCtxInteractive = ""
+
+    const colorSet = LABEL_COLORS[labelIndex % LABEL_COLORS.length]
+    delBtn.style.cssText = `
+      position: fixed;
+      z-index: 2147483647;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 3px 3px 0 0;
+      background: ${colorSet.bg};
+      color: ${colorSet.text};
+      cursor: pointer;
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    `
+    delBtn.innerHTML = `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+    delBtn.title = "Remove selection"
+
+    delBtn.addEventListener("mouseenter", () => { delBtn!.style.opacity = "1" })
+    delBtn.addEventListener("mouseleave", () => { delBtn!.style.opacity = "0" })
+
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      if (onDeleteSelection) onDeleteSelection(key)
+    })
+
+    getShadowRoot().appendChild(delBtn)
+    deleteButtons.set(key, delBtn)
+  }
+
+  // Position delete button above top-right of element
+  delBtn.style.top = `${rect.top - 16}px`
+  delBtn.style.left = `${rect.right - 16}px`
 }
 
 /**
@@ -195,16 +252,22 @@ export function showSelectedElementOverlay(
  */
 export function removeSelectedOverlay(key: string): void {
   const overlay = selectedOverlays.get(key)
-  if (overlay && document.contains(overlay)) {
+  if (overlay && getShadowRoot().contains(overlay)) {
     overlay.remove()
   }
   selectedOverlays.delete(key)
 
   const badge = labelBadges.get(key)
-  if (badge && document.contains(badge)) {
+  if (badge && getShadowRoot().contains(badge)) {
     badge.remove()
   }
   labelBadges.delete(key)
+
+  const delBtn = deleteButtons.get(key)
+  if (delBtn && getShadowRoot().contains(delBtn)) {
+    delBtn.remove()
+  }
+  deleteButtons.delete(key)
 }
 
 /**
@@ -212,14 +275,19 @@ export function removeSelectedOverlay(key: string): void {
  */
 export function removeAllSelectedOverlays(): void {
   for (const overlay of selectedOverlays.values()) {
-    if (document.contains(overlay)) overlay.remove()
+    if (getShadowRoot().contains(overlay)) overlay.remove()
   }
   selectedOverlays.clear()
 
   for (const badge of labelBadges.values()) {
-    if (document.contains(badge)) badge.remove()
+    if (getShadowRoot().contains(badge)) badge.remove()
   }
   labelBadges.clear()
+
+  for (const delBtn of deleteButtons.values()) {
+    if (getShadowRoot().contains(delBtn)) delBtn.remove()
+  }
+  deleteButtons.clear()
 }
 
 /**
@@ -230,14 +298,20 @@ export function updateAllOverlayPositions(
 ): void {
   for (const [key, { rect }] of positions) {
     const overlay = selectedOverlays.get(key)
-    if (overlay && document.contains(overlay)) {
+    if (overlay && getShadowRoot().contains(overlay)) {
       updateOverlayPosition(overlay, rect)
     }
 
     const badge = labelBadges.get(key)
-    if (badge && document.contains(badge)) {
-      badge.style.top = `${rect.top}px`
+    if (badge && getShadowRoot().contains(badge)) {
+      badge.style.top = `${rect.top - 16}px`
       badge.style.left = `${rect.left}px`
+    }
+
+    const delBtn = deleteButtons.get(key)
+    if (delBtn && getShadowRoot().contains(delBtn)) {
+      delBtn.style.top = `${rect.top - 16}px`
+      delBtn.style.left = `${rect.right - 16}px`
     }
   }
 }
@@ -269,14 +343,11 @@ export function getHoverOverlayId(): string {
 
 /**
  * Get all overlay/badge element IDs for skip detection.
+ * Returns empty array since elements are inside Shadow DOM and
+ * document.elementFromPoint() will not return them.
  */
 export function getAllOverlayIds(): string[] {
-  const ids: string[] = [HOVER_OVERLAY_ID]
-  for (const key of selectedOverlays.keys()) {
-    ids.push(MULTI_OVERLAY_PREFIX + key)
-    ids.push(LABEL_BADGE_PREFIX + key)
-  }
-  return ids
+  return []
 }
 
 // ---------------------------------------------------------------------------

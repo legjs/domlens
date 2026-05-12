@@ -14,6 +14,7 @@
 import type { SelectedContext, CompressedContext } from "~shared/types"
 import { LABEL_COLORS, SK_SHORTCUT_CONFIG } from "~shared/constants"
 import { getSelections } from "~lib/inspector"
+import { getShadowRoot } from "~lib/shadow-host"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,7 +82,8 @@ const STYLES = {
     font-size: 12px;
     color: #e0e0e0;
     overflow: hidden;
-    transition: right 0.2s ease, opacity 0.15s ease;
+    transition: opacity 0.15s ease;
+    pointer-events: auto;
   `,
   header: `
     display: flex;
@@ -359,17 +361,17 @@ const STYLES = {
 /** Create and mount the floating panel */
 export function createPanel(): void {
   // Reuse existing DOM elements if present (e.g. after content script re-injection)
-  const existingPanel = document.getElementById("dom-ctx-panel")
+  const existingPanel = getShadowRoot().getElementById("dom-ctx-panel")
 
-  if (existingPanel && document.contains(existingPanel)) {
+  if (existingPanel && getShadowRoot().contains(existingPanel)) {
     // Reconnect module variables to existing DOM
     panelEl = existingPanel as HTMLDivElement
-    expandTabEl = document.getElementById("dom-ctx-expand-tab") as HTMLDivElement | null
-    bodyEl = document.getElementById("dom-ctx-panel-body") as HTMLDivElement | null
+    expandTabEl = getShadowRoot().getElementById("dom-ctx-expand-tab") as HTMLDivElement | null
+    bodyEl = getShadowRoot().getElementById("dom-ctx-panel-body") as HTMLDivElement | null
     isCollapsed = panelEl.dataset.collapsed === "1"
 
     // Re-bind event listeners (old ones were lost when module was re-injected)
-    const header = panelEl.querySelector("div") as HTMLElement | null
+    const header = panelEl.querySelector("#dom-ctx-panel-header") as HTMLElement | null
     if (header) setupDrag(header)
     setupCollapseToggle()
     setupCardExpanders()
@@ -409,6 +411,7 @@ export function createPanel(): void {
 
   // Header
   const header = document.createElement("div")
+  header.id = "dom-ctx-panel-header"
   header.style.cssText = STYLES.header
   header.innerHTML = `
     <span style="${STYLES.headerTitle}">DOM Context</span>
@@ -437,7 +440,7 @@ export function createPanel(): void {
   panelEl.appendChild(header)
   panelEl.appendChild(bodyEl)
   panelEl.appendChild(promptArea)
-  document.documentElement.appendChild(panelEl)
+  getShadowRoot().appendChild(panelEl)
 
   // Event listeners
   setupDrag(header)
@@ -463,7 +466,7 @@ export function updateCards(selections: Map<string, {
 }>): void {
   if (!bodyEl) return
 
-  const countEl = document.getElementById("dom-ctx-count")
+  const countEl = getShadowRoot().getElementById("dom-ctx-count")
   if (countEl) countEl.textContent = String(selections.size)
 
   if (selections.size === 0) {
@@ -540,7 +543,7 @@ export function updateCards(selections: Map<string, {
 
 /** Destroy the floating panel */
 export function destroyPanel(): void {
-  if (panelEl && document.contains(panelEl)) {
+  if (panelEl && getShadowRoot().contains(panelEl)) {
     panelEl.remove()
     panelEl = null
   }
@@ -561,51 +564,48 @@ function positionPanel(el: HTMLElement, right: number, bottom: number): void {
 }
 
 // ---------------------------------------------------------------------------
-// Internal: Drag
+// Internal: Drag (uses Pointer Capture for reliable cross-Shadow-DOM dragging)
 // ---------------------------------------------------------------------------
 
-// Named drag handlers so they can be removed/re-added without duplication
-function onPanelDragMove(e: MouseEvent): void {
-  if (!isDragging || !panelEl) return
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  let x = e.clientX - dragOffsetX
-  let y = e.clientY - dragOffsetY
-  x = Math.max(0, Math.min(x, vw - PANEL_WIDTH))
-  y = Math.max(0, Math.min(y, vh - 80))
-  savedRight = vw - x - PANEL_WIDTH
-  savedBottom = vh - y - panelEl.offsetHeight
-  panelEl.style.right = `${Math.max(0, savedRight)}px`
-  panelEl.style.bottom = `${Math.max(0, savedBottom)}px`
-  panelEl.style.left = "auto"
-  panelEl.style.top = "auto"
-}
-
-function onPanelDragEnd(): void {
-  isDragging = false
-  if (panelEl) {
-    const header = panelEl.querySelector("div")
-    if (header) header.style.cursor = "grab"
-  }
-}
-
 function setupDrag(handle: HTMLElement): void {
-  // Remove old document-level listeners to prevent duplication
-  document.removeEventListener("mousemove", onPanelDragMove)
-  document.removeEventListener("mouseup", onPanelDragEnd)
+  // Clone handle to remove all old listeners (prevents duplication on re-injection)
+  const newHandle = handle.cloneNode(true) as HTMLElement
+  handle.parentNode?.replaceChild(newHandle, handle)
 
-  handle.addEventListener("mousedown", (e: MouseEvent) => {
+  newHandle.addEventListener("pointerdown", (e: PointerEvent) => {
     if ((e.target as HTMLElement).tagName === "BUTTON") return
     isDragging = true
-    handle.style.cursor = "grabbing"
+    newHandle.style.cursor = "grabbing"
     const rect = panelEl!.getBoundingClientRect()
     dragOffsetX = e.clientX - rect.left
     dragOffsetY = e.clientY - rect.top
+    newHandle.setPointerCapture(e.pointerId)
     e.preventDefault()
   })
 
-  document.addEventListener("mousemove", onPanelDragMove)
-  document.addEventListener("mouseup", onPanelDragEnd)
+  newHandle.addEventListener("pointermove", (e: PointerEvent) => {
+    if (!isDragging || !panelEl) return
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let x = e.clientX - dragOffsetX
+    let y = e.clientY - dragOffsetY
+    x = Math.max(0, Math.min(x, vw - PANEL_WIDTH))
+    y = Math.max(0, Math.min(y, vh - 80))
+    savedRight = vw - x - PANEL_WIDTH
+    savedBottom = vh - y - panelEl.offsetHeight
+    panelEl.style.right = `${Math.max(0, savedRight)}px`
+    panelEl.style.bottom = `${Math.max(0, savedBottom)}px`
+    panelEl.style.left = "auto"
+    panelEl.style.top = "auto"
+  })
+
+  const endDrag = () => {
+    isDragging = false
+    newHandle.style.cursor = "grab"
+  }
+
+  newHandle.addEventListener("pointerup", endDrag)
+  newHandle.addEventListener("lostpointercapture", endDrag)
 }
 
 // ---------------------------------------------------------------------------
@@ -613,7 +613,7 @@ function setupDrag(handle: HTMLElement): void {
 // ---------------------------------------------------------------------------
 
 function setupCollapseToggle(): void {
-  const collapseBtn = document.getElementById("dom-ctx-collapse-btn")
+  const collapseBtn = getShadowRoot().getElementById("dom-ctx-collapse-btn")
   collapseBtn?.addEventListener("click", () => collapsePanel())
   expandTabEl?.addEventListener("click", () => expandPanel())
 }
@@ -746,8 +746,8 @@ function setupDescriptionInputs(): void {
 // ---------------------------------------------------------------------------
 
 function setupPromptSend(): void {
-  const textarea = document.getElementById("dom-ctx-prompt-input") as HTMLTextAreaElement | null
-  const sendBtn = document.getElementById("dom-ctx-send-btn") as HTMLButtonElement | null
+  const textarea = getShadowRoot().getElementById("dom-ctx-prompt-input") as HTMLTextAreaElement | null
+  const sendBtn = getShadowRoot().getElementById("dom-ctx-send-btn") as HTMLButtonElement | null
   if (!textarea || !sendBtn) return
 
   textarea.addEventListener("input", () => {
@@ -801,7 +801,7 @@ function setupPromptSend(): void {
 // ---------------------------------------------------------------------------
 
 function setupTextareaFocus(): void {
-  const textarea = document.getElementById("dom-ctx-prompt-input") as HTMLTextAreaElement | null
+  const textarea = getShadowRoot().getElementById("dom-ctx-prompt-input") as HTMLTextAreaElement | null
   if (!textarea) return
   textarea.addEventListener("focus", () => {
     textarea.style.cssText = STYLES.promptTextarea + STYLES.promptTextareaFocus
@@ -816,7 +816,7 @@ function setupTextareaFocus(): void {
 // ---------------------------------------------------------------------------
 
 function setupClearAll(): void {
-  const clearBtn = document.getElementById("dom-ctx-clear-btn")
+  const clearBtn = getShadowRoot().getElementById("dom-ctx-clear-btn")
   clearBtn?.addEventListener("click", () => {
     try {
       chrome.runtime.sendMessage({ type: "CLEAR_SELECTIONS" }).catch(() => {})
@@ -887,7 +887,7 @@ function buildPanelPrompt(): string {
 // ---------------------------------------------------------------------------
 
 function setupCopyButton(): void {
-  const copyBtn = document.getElementById("dom-ctx-copy-btn")
+  const copyBtn = getShadowRoot().getElementById("dom-ctx-copy-btn")
   if (!copyBtn) return
 
   copyBtn.addEventListener("mouseenter", () => {

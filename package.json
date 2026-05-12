@@ -1,39 +1,17 @@
 {
-  "name": "claude-dom-context",
-  "displayName": "AI Runtime Inspector",
+  "name": "domlens-monorepo",
+  "private": true,
   "version": "0.1.0",
-  "description": "Chrome extension that provides AI coding agents with runtime DOM context awareness",
+  "description": "Monorepo for DomLens - Chrome extension and documentation website",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "plasmo dev",
-    "build": "plasmo build",
-    "package": "plasmo package",
-    "runtime:start": "tsx src/server/index.ts",
-    "runtime:dev": "tsx watch src/server/index.ts"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "cors": "^2.8.6",
-    "express": "^4.22.1",
-    "plasmo": "^0.90.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zod": "^3.25.76",
-    "zustand": "^4.5.2"
-  },
-  "devDependencies": {
-    "@plasmohq/messaging": "^0.6.2",
-    "@types/chrome": "^0.0.268",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^20.14.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "tsx": "^4.21.0",
-    "typescript": "^5.4.5"
+    "dev:extension": "pnpm --filter @domlens/extension dev",
+    "build:extension": "pnpm --filter @domlens/extension build",
+    "dev:website": "pnpm --filter @domlens/website dev",
+    "build:website": "pnpm --filter @domlens/website build",
+    "dev:runtime": "pnpm --filter @domlens/runtime dev",
+    "start:runtime": "pnpm --filter @domlens/runtime start",
+    "build": "pnpm build:extension && pnpm build:website"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -43,18 +21,6 @@
       "lmdb",
       "msgpackr-extract",
       "sharp"
-    ]
-  },
-  "manifest": {
-    "host_permissions": [
-      "https://*/*",
-      "http://*/*"
-    ],
-    "permissions": [
-      "activeTab",
-      "clipboardWrite",
-      "storage",
-      "scripting"
     ]
   }
 }

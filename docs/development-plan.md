@@ -1,4 +1,4 @@
-# AI Runtime Inspector - 开发任务计划
+# DomLens - 开发任务计划
 
 ## 项目目标
 

@@ -1,0 +1,330 @@
+{
+  "appName": {
+    "message": "DomLens",
+    "description": "应用程序名称"
+  },
+  "settings": {
+    "message": "设置",
+    "description": "设置按钮文本"
+  },
+  "back": {
+    "message": "返回",
+    "description": "返回按钮文本"
+  },
+  "inspectorOn": {
+    "message": "检查器：开启",
+    "description": "检查器激活时的状态"
+  },
+  "inspectorOff": {
+    "message": "检查器：关闭",
+    "description": "检查器未激活时的状态"
+  },
+  "offline": {
+    "message": "离线",
+    "description": "离线状态指示器"
+  },
+  "noElementsSelected": {
+    "message": "未选择元素",
+    "description": "没有元素被选中的消息"
+  },
+  "seeFloatingPanel": {
+    "message": "查看浮动面板",
+    "description": "查看浮动面板的说明"
+  },
+  "clickToSelect": {
+    "message": "点击选择元素",
+    "description": "元素选择说明"
+  },
+  "copyPrompt": {
+    "message": "复制提示",
+    "description": "复制生成提示的按钮"
+  },
+  "copied": {
+    "message": "已复制！",
+    "description": "文本复制时的确认消息"
+  },
+  "elementLabel": {
+    "message": "元素",
+    "description": "单个元素的标签"
+  },
+  "elementsLabel": {
+    "message": "元素",
+    "description": "多个元素的标签"
+  },
+  "inspectKey": {
+    "message": "检查键",
+    "description": "检查键设置标签"
+  },
+  "inspectKeyDesc": {
+    "message": "切换检查器模式的键",
+    "description": "检查键设置的说明"
+  },
+  "multiSelectKey": {
+    "message": "多选键",
+    "description": "多选键设置标签"
+  },
+  "multiSelectKeyDesc": {
+    "message": "切换多选模式的键",
+    "description": "多选键设置的说明"
+  },
+  "requireKeyToSelect": {
+    "message": "需要按键选择",
+    "description": "需要按键设置的标签"
+  },
+  "requireKeyDesc": {
+    "message": "需要修饰键才能选择元素",
+    "description": "需要按键设置的说明"
+  },
+  "showFloatingPanel": {
+    "message": "显示浮动面板",
+    "description": "浮动面板设置标签"
+  },
+  "showFloatingPanelDesc": {
+    "message": "选择元素时始终显示浮动面板",
+    "description": "浮动面板设置的说明"
+  },
+  "inlinePrompt": {
+    "message": "内联提示",
+    "description": "内联提示设置标签"
+  },
+  "inlinePromptDesc": {
+    "message": "在选中的元素上显示内联提示按钮",
+    "description": "内联提示设置的说明"
+  },
+  "shortcuts": {
+    "message": "快捷键",
+    "description": "快捷键部分标题"
+  },
+  "activate": {
+    "message": "激活",
+    "description": "激活快捷键说明"
+  },
+  "select": {
+    "message": "选择",
+    "description": "选择快捷键说明"
+  },
+  "multiSelect": {
+    "message": "多选",
+    "description": "多选快捷键说明"
+  },
+  "clear": {
+    "message": "清除",
+    "description": "清除快捷键说明"
+  },
+  "resetToDefaults": {
+    "message": "恢复默认",
+    "description": "恢复默认设置的按钮"
+  },
+  "hold": {
+    "message": "按住 $1",
+    "description": "键组合，带有键占位符"
+  },
+  "clickCombo": {
+    "message": "点击 + $1",
+    "description": "点击和键组合，带有键占位符"
+  },
+  "multiCombo": {
+    "message": "点击 + $1，然后 $2",
+    "description": "点击和键组合，带有两个键占位符"
+  },
+  "metaKey": {
+    "message": "元键（Ctrl/Cmd）",
+    "description": "元键标签（Ctrl/Cmd）"
+  },
+  "panelTitle": {
+    "message": "DomLens 面板",
+    "description": "浮动面板的标题"
+  },
+  "panelEmptyState": {
+    "message": "未选择元素。点击元素进行检查。",
+    "description": "面板为空时的消息"
+  },
+  "panelCopyTooltip": {
+    "message": "复制提示",
+    "description": "面板中复制按钮的工具提示"
+  },
+  "panelCollapseTooltip": {
+    "message": "折叠面板",
+    "description": "面板中折叠按钮的工具提示"
+  },
+  "panelExpandTooltip": {
+    "message": "展开面板",
+    "description": "面板中展开按钮的工具提示"
+  },
+  "panelRemoveTooltip": {
+    "message": "移除元素",
+    "description": "面板中移除元素按钮的工具提示"
+  },
+  "panelRemoveSelectionTooltip": {
+    "message": "移除选择",
+    "description": "面板中移除选择按钮的工具提示"
+  },
+  "panelDescPlaceholder": {
+    "message": "描述您想要对这些元素做什么...",
+    "description": "面板中描述输入的占位符"
+  },
+  "panelPromptPlaceholder": {
+    "message": "在此输入您的提示...",
+    "description": "面板中提示输入的占位符"
+  },
+  "panelSend": {
+    "message": "发送",
+    "description": "面板中的发送按钮文本"
+  },
+  "panelSending": {
+    "message": "发送中...",
+    "description": "面板中的发送状态"
+  },
+  "panelSent": {
+    "message": "已发送",
+    "description": "提示已发送的确认"
+  },
+  "panelSendToClaude": {
+    "message": "发送给 Claude",
+    "description": "发送提示给 Claude 的按钮文本"
+  },
+  "panelClearAll": {
+    "message": "清除全部",
+    "description": "清除所有选择的按钮"
+  },
+  "detailCssSelector": {
+    "message": "CSS 选择器",
+    "description": "CSS 选择器详情标签"
+  },
+  "detailXpath": {
+    "message": "XPath",
+    "description": "XPath 详情标签"
+  },
+  "detailBoundingBox": {
+    "message": "边界框",
+    "description": "边界框详情标签"
+  },
+  "detailAccessibility": {
+    "message": "无障碍性",
+    "description": "无障碍性详情标签"
+  },
+  "detailComputedStyles": {
+    "message": "计算样式",
+    "description": "计算样式详情标签"
+  },
+  "detailHtml": {
+    "message": "HTML",
+    "description": "HTML 内容标签"
+  },
+  "inlinePromptPlaceholder": {
+    "message": "输入提示...",
+    "description": "内联提示占位符"
+  },
+  "inlinePromptClose": {
+    "message": "关闭",
+    "description": "内联提示的关闭按钮"
+  },
+  "elementSelections": {
+    "message": "元素选择",
+    "description": "元素选择部分标题"
+  },
+  "elementLabelSection": {
+    "message": "元素 $1",
+    "description": "带索引的元素标签"
+  },
+  "elementLabelDesc": {
+    "message": "已选择 $1 个中的 $2 个元素",
+    "description": "元素选择状态描述"
+  },
+  "tagLabel": {
+    "message": "标签",
+    "description": "HTML 标签名标签"
+  },
+  "cssSelectorLabel": {
+    "message": "CSS 选择器",
+    "description": "CSS 选择器标签"
+  },
+  "xpathLabel": {
+    "message": "XPath",
+    "description": "XPath 标签"
+  },
+  "idLabel": {
+    "message": "ID",
+    "description": "元素 ID 标签"
+  },
+  "classLabel": {
+    "message": "类",
+    "description": "元素类标签"
+  },
+  "textLabel": {
+    "message": "文本内容",
+    "description": "元素文本内容标签"
+  },
+  "sizeLabel": {
+    "message": "尺寸",
+    "description": "元素尺寸标签"
+  },
+  "positionLabel": {
+    "message": "位置",
+    "description": "元素位置标签"
+  },
+  "roleLabel": {
+    "message": "角色",
+    "description": "ARIA 角色标签"
+  },
+  "ariaLabelLabel": {
+    "message": "ARIA 标签",
+    "description": "ARIA 标签标签"
+  },
+  "focusableLabel": {
+    "message": "可聚焦",
+    "description": "可聚焦状态标签"
+  },
+  "interactiveLabel": {
+    "message": "可交互",
+    "description": "可交互状态标签"
+  },
+  "computedStylesLabel": {
+    "message": "计算样式",
+    "description": "计算样式标签"
+  },
+  "htmlLabel": {
+    "message": "HTML",
+    "description": "HTML 内容标签"
+  },
+  "layoutChainLabel": {
+    "message": "布局链",
+    "description": "布局链信息标签"
+  },
+  "taskSection": {
+    "message": "任务",
+    "description": "任务描述部分标题"
+  },
+  "taskSingle": {
+    "message": "任务（单个元素）",
+    "description": "单个元素任务占位符"
+  },
+  "taskMultiple": {
+    "message": "任务（多个元素）",
+    "description": "多个元素任务占位符"
+  },
+  "language": {
+    "message": "语言",
+    "description": "语言设置标签"
+  },
+  "languageDesc": {
+    "message": "选择您的首选语言",
+    "description": "语言设置说明"
+  },
+  "langAuto": {
+    "message": "自动",
+    "description": "自动语言选项"
+  },
+  "langEn": {
+    "message": "English",
+    "description": "英语语言选项"
+  },
+  "langZh": {
+    "message": "中文",
+    "description": "中文语言选项"
+  },
+  "elementsSelected": {
+    "message": "已选择 $1 个元素",
+    "description": "显示选中元素数量的消息"
+  }
+}

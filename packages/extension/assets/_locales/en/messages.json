@@ -1,0 +1,330 @@
+{
+  "appName": {
+    "message": "DomLens",
+    "description": "Application name"
+  },
+  "settings": {
+    "message": "Settings",
+    "description": "Settings button text"
+  },
+  "back": {
+    "message": "Back",
+    "description": "Back button text"
+  },
+  "inspectorOn": {
+    "message": "Inspector: On",
+    "description": "Status when inspector is active"
+  },
+  "inspectorOff": {
+    "message": "Inspector: Off",
+    "description": "Status when inspector is inactive"
+  },
+  "offline": {
+    "message": "Offline",
+    "description": "Offline status indicator"
+  },
+  "noElementsSelected": {
+    "message": "No elements selected",
+    "description": "Message when no elements are selected"
+  },
+  "seeFloatingPanel": {
+    "message": "See floating panel",
+    "description": "Instruction to view floating panel"
+  },
+  "clickToSelect": {
+    "message": "Click to select elements",
+    "description": "Instruction for element selection"
+  },
+  "copyPrompt": {
+    "message": "Copy Prompt",
+    "description": "Button to copy generated prompt"
+  },
+  "copied": {
+    "message": "Copied!",
+    "description": "Confirmation message when text is copied"
+  },
+  "elementLabel": {
+    "message": "Element",
+    "description": "Label for a single element"
+  },
+  "elementsLabel": {
+    "message": "Elements",
+    "description": "Label for multiple elements"
+  },
+  "inspectKey": {
+    "message": "Inspect Key",
+    "description": "Label for inspect key setting"
+  },
+  "inspectKeyDesc": {
+    "message": "Key to toggle inspector mode",
+    "description": "Description for inspect key setting"
+  },
+  "multiSelectKey": {
+    "message": "Multi-Select Key",
+    "description": "Label for multi-select key setting"
+  },
+  "multiSelectKeyDesc": {
+    "message": "Key to toggle multi-select mode",
+    "description": "Description for multi-select key setting"
+  },
+  "requireKeyToSelect": {
+    "message": "Require Key to Select",
+    "description": "Label for require key setting"
+  },
+  "requireKeyDesc": {
+    "message": "Require modifier key to select elements",
+    "description": "Description for require key setting"
+  },
+  "showFloatingPanel": {
+    "message": "Show Floating Panel",
+    "description": "Label for floating panel setting"
+  },
+  "showFloatingPanelDesc": {
+    "message": "Always show floating panel when elements are selected",
+    "description": "Description for floating panel setting"
+  },
+  "inlinePrompt": {
+    "message": "Inline Prompt",
+    "description": "Label for inline prompt setting"
+  },
+  "inlinePromptDesc": {
+    "message": "Show inline prompt button on selected elements",
+    "description": "Description for inline prompt setting"
+  },
+  "shortcuts": {
+    "message": "Shortcuts",
+    "description": "Shortcuts section header"
+  },
+  "activate": {
+    "message": "Activate",
+    "description": "Shortcut description for activation"
+  },
+  "select": {
+    "message": "Select",
+    "description": "Shortcut description for selection"
+  },
+  "multiSelect": {
+    "message": "Multi-Select",
+    "description": "Shortcut description for multi-select"
+  },
+  "clear": {
+    "message": "Clear",
+    "description": "Shortcut description for clearing selection"
+  },
+  "resetToDefaults": {
+    "message": "Reset to Defaults",
+    "description": "Button to reset settings to defaults"
+  },
+  "hold": {
+    "message": "Hold $1",
+    "description": "Key combination with key placeholder"
+  },
+  "clickCombo": {
+    "message": "Click + $1",
+    "description": "Click and key combination with key placeholder"
+  },
+  "multiCombo": {
+    "message": "Click + $1, then $2",
+    "description": "Click and key combination with two key placeholders"
+  },
+  "metaKey": {
+    "message": "Meta Key",
+    "description": "Label for meta key (Ctrl/Cmd)"
+  },
+  "panelTitle": {
+    "message": "DomLens Panel",
+    "description": "Title of the floating panel"
+  },
+  "panelEmptyState": {
+    "message": "No elements selected. Click on elements to inspect them.",
+    "description": "Message when panel is empty"
+  },
+  "panelCopyTooltip": {
+    "message": "Copy Prompt",
+    "description": "Tooltip for copy button in panel"
+  },
+  "panelCollapseTooltip": {
+    "message": "Collapse Panel",
+    "description": "Tooltip for collapse button in panel"
+  },
+  "panelExpandTooltip": {
+    "message": "Expand Panel",
+    "description": "Tooltip for expand button in panel"
+  },
+  "panelRemoveTooltip": {
+    "message": "Remove Element",
+    "description": "Tooltip for remove button in panel"
+  },
+  "panelRemoveSelectionTooltip": {
+    "message": "Remove Selection",
+    "description": "Tooltip for remove selection button in panel"
+  },
+  "panelDescPlaceholder": {
+    "message": "Describe what you want to do with these elements...",
+    "description": "Placeholder for description input in panel"
+  },
+  "panelPromptPlaceholder": {
+    "message": "Enter your prompt here...",
+    "description": "Placeholder for prompt input in panel"
+  },
+  "panelSend": {
+    "message": "Send",
+    "description": "Send button text in panel"
+  },
+  "panelSending": {
+    "message": "Sending...",
+    "description": "Sending state in panel"
+  },
+  "panelSent": {
+    "message": "Sent",
+    "description": "Confirmation that prompt was sent"
+  },
+  "panelSendToClaude": {
+    "message": "Send to Claude",
+    "description": "Button text to send prompt to Claude"
+  },
+  "panelClearAll": {
+    "message": "Clear All",
+    "description": "Button to clear all selections"
+  },
+  "detailCssSelector": {
+    "message": "CSS Selector",
+    "description": "Label for CSS selector detail"
+  },
+  "detailXpath": {
+    "message": "XPath",
+    "description": "Label for XPath detail"
+  },
+  "detailBoundingBox": {
+    "message": "Bounding Box",
+    "description": "Label for bounding box detail"
+  },
+  "detailAccessibility": {
+    "message": "Accessibility",
+    "description": "Label for accessibility details"
+  },
+  "detailComputedStyles": {
+    "message": "Computed Styles",
+    "description": "Label for computed styles detail"
+  },
+  "detailHtml": {
+    "message": "HTML",
+    "description": "Label for HTML content"
+  },
+  "inlinePromptPlaceholder": {
+    "message": "Enter prompt...",
+    "description": "Placeholder for inline prompt"
+  },
+  "inlinePromptClose": {
+    "message": "Close",
+    "description": "Close button for inline prompt"
+  },
+  "elementSelections": {
+    "message": "Element Selections",
+    "description": "Section header for element selections"
+  },
+  "elementLabelSection": {
+    "message": "Element $1",
+    "description": "Label for element with index"
+  },
+  "elementLabelDesc": {
+    "message": "Selected $1 of $2 elements",
+    "description": "Description of element selection status"
+  },
+  "tagLabel": {
+    "message": "Tag",
+    "description": "Label for HTML tag name"
+  },
+  "cssSelectorLabel": {
+    "message": "CSS Selector",
+    "description": "Label for CSS selector"
+  },
+  "xpathLabel": {
+    "message": "XPath",
+    "description": "Label for XPath"
+  },
+  "idLabel": {
+    "message": "ID",
+    "description": "Label for element ID"
+  },
+  "classLabel": {
+    "message": "Classes",
+    "description": "Label for element classes"
+  },
+  "textLabel": {
+    "message": "Text Content",
+    "description": "Label for element text content"
+  },
+  "sizeLabel": {
+    "message": "Size",
+    "description": "Label for element dimensions"
+  },
+  "positionLabel": {
+    "message": "Position",
+    "description": "Label for element position"
+  },
+  "roleLabel": {
+    "message": "Role",
+    "description": "Label for ARIA role"
+  },
+  "ariaLabelLabel": {
+    "message": "ARIA Label",
+    "description": "Label for ARIA label"
+  },
+  "focusableLabel": {
+    "message": "Focusable",
+    "description": "Label for focusable status"
+  },
+  "interactiveLabel": {
+    "message": "Interactive",
+    "description": "Label for interactive status"
+  },
+  "computedStylesLabel": {
+    "message": "Computed Styles",
+    "description": "Label for computed styles"
+  },
+  "htmlLabel": {
+    "message": "HTML",
+    "description": "Label for HTML content"
+  },
+  "layoutChainLabel": {
+    "message": "Layout Chain",
+    "description": "Label for layout chain information"
+  },
+  "taskSection": {
+    "message": "Task",
+    "description": "Section header for task description"
+  },
+  "taskSingle": {
+    "message": "Task (Single Element)",
+    "description": "Placeholder for single element task"
+  },
+  "taskMultiple": {
+    "message": "Task (Multiple Elements)",
+    "description": "Placeholder for multiple elements task"
+  },
+  "language": {
+    "message": "Language",
+    "description": "Label for language setting"
+  },
+  "languageDesc": {
+    "message": "Choose your preferred language",
+    "description": "Description for language setting"
+  },
+  "langAuto": {
+    "message": "Auto",
+    "description": "Auto language option"
+  },
+  "langEn": {
+    "message": "English",
+    "description": "English language option"
+  },
+  "langZh": {
+    "message": "中文",
+    "description": "Chinese language option"
+  },
+  "elementsSelected": {
+    "message": "$1 elements selected",
+    "description": "Message showing number of selected elements"
+  }
+}

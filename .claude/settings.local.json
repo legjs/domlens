@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build:extension)",
+      "Bash(pnpm build:website)"
+    ]
+  }
+}

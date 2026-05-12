@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "dom-context": {
+    "domlens": {
       "command": "npx",
-      "args": ["tsx", "src/server/index.ts"],
-      "cwd": "."
+      "args": ["tsx", "src/index.ts"],
+      "cwd": "./packages/runtime"
     }
   }
 }

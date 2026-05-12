@@ -1,0 +1,171 @@
+{
+  "Metadata": {
+    "siteTitle": "DomLens",
+    "siteDescription": "AI 驱动的 DOM 检查与上下文感知。支持 MCP 集成的 Chrome 扩展，适用于 Claude Code、Cursor 等工具。"
+  },
+  "Nav": {
+    "home": "首页",
+    "help": "帮助",
+    "blog": "博客",
+    "install": "安装扩展"
+  },
+  "Footer": {
+    "product": "产品",
+    "features": "功能特性",
+    "install": "安装",
+    "github": "GitHub",
+    "resources": "资源",
+    "docs": "文档",
+    "blog": "博客",
+    "helpCenter": "帮助中心",
+    "legal": "法律",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "copyright": "© 2026 DomLens. 保留所有权利。"
+  },
+  "HomePage": {
+    "metaTitle": "DomLens - AI 运行时 DOM 检查器",
+    "metaDescription": "AI 驱动的 DOM 检查与上下文感知。检查元素、捕获结构化上下文，通过 MCP 直接传递给 AI 工具。",
+    "heroTitle": "让 AI 拥有",
+    "heroTitleHighlight": "运行时 DOM 感知能力",
+    "heroSubtitle": "DomLens 弥合了 AI 编程助手与实时 DOM 之间的鸿沟。检查元素、捕获结构化上下文，通过 MCP 直接传递给您的 AI 工具。",
+    "ctaInstall": "安装扩展",
+    "ctaGithub": "查看 GitHub",
+    "featuresTitle": "AI 驱动的 DOM 检查，所需的一切",
+    "featuresSubtitle": "从元素检查到 AI 上下文传递，DomLens 覆盖完整工作流。",
+    "howItWorksTitle": "工作原理",
+    "howItWorksSubtitle": "三步即可开始使用",
+    "step1Title": "安装扩展",
+    "step1Desc": "将 DomLens 添加到 Chrome 并启动本地运行时服务器。",
+    "step2Title": "检查元素",
+    "step2Desc": "悬停在任何元素上即可捕获其结构、样式和布局信息。",
+    "step3Title": "AI 获取上下文",
+    "step3Desc": "您的 AI 工具通过 MCP 自动获取结构化 DOM 上下文。",
+    "mcpTitle": "MCP 集成",
+    "mcpSubtitle": "原生模型上下文协议支持，无缝 AI 集成",
+    "mcpDesc": "DomLens 运行本地 MCP 服务器，为 AI 代理提供 5 个工具。一次配置，AI 工具即可获得实时 DOM 感知能力。",
+    "mcpTools": "可用的 MCP 工具",
+    "ctaTitle": "准备好提升您的 AI 工作流了吗？",
+    "ctaSubtitle": "安装 DomLens，让您的 AI 编程助手拥有运行时 DOM 感知能力。",
+    "ctaInstall": "在 Chrome 网上应用店安装",
+    "ctaStar": "在 GitHub 上 Star"
+  },
+  "Features": {
+    "inspector": {
+      "title": "元素检查器",
+      "description": "悬停在任何 DOM 元素上即可查看详细信息，包括样式、属性、计算属性和盒模型可视化。"
+    },
+    "multiSelect": {
+      "title": "多元素选择",
+      "description": "使用 Ctrl+Click 同时选择多个元素。每个选择都有独立标签，可单独管理。"
+    },
+    "mcp": {
+      "title": "MCP 集成",
+      "description": "原生 MCP 服务器集成，支持 Claude Code、Cursor、Windsurf 等 AI 工具。零配置自动发现。"
+    },
+    "compression": {
+      "title": "上下文压缩",
+      "description": "智能压缩引擎，将 DOM 上下文精简为最相关的信息，提高 AI 消费效率。"
+    },
+    "panel": {
+      "title": "浮动面板",
+      "description": "可拖拽的内联面板，显示选中元素的详细信息。可直接从面板发送上下文到 AI 工具。"
+    },
+    "autoDiscovery": {
+      "title": "自动发现服务器",
+      "description": "本地运行时服务器支持自动端口检测（4777-4787）。无需手动配置。"
+    }
+  },
+  "McpTools": {
+    "getLatestContext": {
+      "name": "get_latest_context",
+      "desc": "获取检查器捕获的最新 DOM 上下文"
+    },
+    "getPrompt": {
+      "name": "get_prompt",
+      "desc": "获取格式化的 Markdown 提示，可直接粘贴到 AI 对话中"
+    },
+    "listContexts": {
+      "name": "list_contexts",
+      "desc": "列出所有存储的 DOM 上下文历史记录"
+    },
+    "clearContexts": {
+      "name": "clear_contexts",
+      "desc": "清除所有存储的 DOM 上下文历史"
+    },
+    "getUserPrompt": {
+      "name": "get_user_prompt",
+      "desc": "获取从浮动面板提交的最新用户提示"
+    }
+  },
+  "HelpPage": {
+    "metaTitle": "帮助中心",
+    "metaDescription": "获取 DomLens 的帮助。查找常见问题解答、使用指南和键盘快捷键。",
+    "title": "帮助中心",
+    "subtitle": "关于 DomLens 的一切",
+    "faqTitle": "常见问题",
+    "guideTitle": "使用指南",
+    "guideSubtitle": "快速上手的分步说明",
+    "shortcutsTitle": "键盘快捷键",
+    "shortcutsSubtitle": "所有可用快捷键的快速参考",
+    "action": "操作",
+    "shortcut": "快捷键",
+    "installStep1": "从 Chrome 网上应用店安装 DomLens 扩展。",
+    "installStep2": "克隆仓库并安装依赖：",
+    "installStep3": "启动本地运行时服务器：",
+    "installStep4": "在 AI 工具设置中配置 MCP。Claude Code 示例：",
+    "faq": [
+      {
+        "q": "DomLens 是什么？",
+        "a": "DomLens 是一个 Chrome 扩展，为 AI 编程助手提供运行时 DOM 上下文感知能力。它允许 Claude Code 等 AI 工具理解网页元素的实时状态。"
+      },
+      {
+        "q": "如何安装扩展？",
+        "a": "您可以从 Chrome 网上应用店安装 DomLens，或在开发者模式下以未打包扩展的方式加载进行开发。"
+      },
+      {
+        "q": "如何启动运行时服务器？",
+        "a": "在项目目录中运行 `pnpm runtime:start`。服务器将自动发现 4777-4787 范围内的可用端口。"
+      },
+      {
+        "q": "支持哪些 AI 工具？",
+        "a": "DomLens 支持任何实现模型上下文协议（MCP）的 AI 工具，包括 Claude Code、Cursor 和 Windsurf。"
+      },
+      {
+        "q": "MCP 集成如何工作？",
+        "a": "DomLens 运行本地 MCP 服务器，暴露 5 个工具。在 AI 工具的 MCP 设置中配置服务器 URL，即可自动访问 DOM 上下文数据。"
+      },
+      {
+        "q": "我的数据安全吗？",
+        "a": "是的。所有 DOM 上下文数据都在您的本地机器上处理。运行时服务器仅接受来自 localhost 的连接。不会将数据发送到外部服务器。"
+      },
+      {
+        "q": "有哪些键盘快捷键？",
+        "a": "Alt+悬停检查，单击选择，Ctrl+单击多选，Escape 关闭覆盖层。请参阅下方快捷键表查看完整列表。"
+      },
+      {
+        "q": "多元素选择如何工作？",
+        "a": "按住 Ctrl（Mac 上为 Cmd）并点击元素即可选择多个项目。每个选择都标记为 A-J 并显示在浮动面板中。按 Escape 移除最后一个选择。"
+      }
+    ]
+  },
+  "Shortcuts": {
+    "inspectElement": "检查元素",
+    "inspectShortcut": "Alt + 悬停",
+    "selectElement": "选择元素",
+    "selectShortcut": "单击",
+    "multiSelect": "多元素选择",
+    "multiSelectShortcut": "Ctrl + 单击",
+    "closeOverlay": "关闭覆盖层 / 移除最后选择",
+    "closeShortcut": "Escape"
+  },
+  "BlogPage": {
+    "metaTitle": "博客",
+    "metaDescription": "关于 DomLens 和 AI 驱动 Web 开发的最新更新、指南和见解。",
+    "title": "博客",
+    "subtitle": "最新更新、指南和见解",
+    "readMore": "阅读更多 →",
+    "backToBlog": "← 返回博客",
+    "publishedOn": "发布于"
+  }
+}

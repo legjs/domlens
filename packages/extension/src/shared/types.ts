@@ -61,11 +61,23 @@ export interface LayoutNode {
   transform?: string;
 }
 
+// Source location extracted from framework internals
+export interface SourceLocation {
+  /** Source file path relative to project root (e.g. "src/components/Button.tsx") */
+  fileName: string;
+  /** Line number in the source file (1-based) */
+  lineNumber: number;
+  /** Column number in the source file (1-based, optional) */
+  columnNumber?: number;
+}
+
 // React Component Information
 export interface ReactInfo {
   componentName: string;
   props?: Record<string, any>;
   stateNode?: any;
+  /** Source file location extracted from React Fiber _debugSource */
+  sourceLocation?: SourceLocation;
 }
 
 // Constraint Issue
@@ -223,3 +235,5 @@ export interface ServerConfig {
   /** Allowed CORS origin (used in Access-Control-Allow-Origin header) */
   corsOrigin: string;
 }
+
+

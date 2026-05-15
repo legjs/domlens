@@ -101,7 +101,7 @@ const STYLES = {
     border: 1px solid #2a2a4a;
     border-radius: 10px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    z-index: 2147483640;
+    z-index: 2147483647;
     display: flex;
     flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -130,7 +130,7 @@ const STYLES = {
   headerBadge: `
     font-size: 10px;
     background: #2a2a4a;
-    color: #aaa;
+    color: #ccc;
     padding: 1px 6px;
     border-radius: 8px;
     margin-left: 6px;
@@ -139,29 +139,44 @@ const STYLES = {
     margin-left: auto;
     background: none;
     border: none;
-    color: #888;
+    color: #bbb;
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 4px 6px;
     font-size: 12px;
     line-height: 1;
   `,
   copyBtn: `
     background: none;
     border: none;
-    color: #888;
+    color: #aaa;
     cursor: pointer;
-    padding: 2px 4px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: 13px;
     line-height: 1;
+    min-width: 28px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
   `,
   copyBtnHover: `
     background: none;
     border: none;
-    color: #ccc;
+    color: #fff;
     cursor: pointer;
-    padding: 2px 4px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: 13px;
     line-height: 1;
+    min-width: 28px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    transition: color 0.15s, background 0.15s;
   `,
   body: `
     flex: 1;
@@ -212,18 +227,17 @@ const STYLES = {
     text-overflow: ellipsis;
   `,
   removeBtn: `
-    margin-left: auto;
     background: none;
     border: none;
-    color: #bbb;
+    color: #999;
     cursor: pointer;
     padding: 2px 4px;
     font-size: 14px;
     line-height: 1;
     flex-shrink: 0;
+    margin-left: auto;
   `,
   removeBtnHover: `
-    margin-left: auto;
     background: none;
     border: none;
     color: #e74c3c;
@@ -232,9 +246,9 @@ const STYLES = {
     font-size: 14px;
     line-height: 1;
     flex-shrink: 0;
+    margin-left: auto;
   `,
   cardArrow: `
-    margin-left: auto;
     color: #aaa;
     font-size: 9px;
     flex-shrink: 0;
@@ -242,22 +256,24 @@ const STYLES = {
   cardDetail: `
     padding: 6px 8px;
     border-top: 1px solid #2a2a4a;
-    font-size: 10px;
+    font-size: 11px;
     overflow: hidden;
+    color: #d0d0d0;
   `,
   detailLabel: `
-    font-size: 9px;
-    color: #888;
+    font-size: 10px;
+    color: #b0b0b0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 2px;
   `,
   detailCode: `
-    font-size: 10px;
+    font-size: 11px;
     word-break: break-all;
+    color: #d0d0d0;
   `,
   detailPre: `
-    font-size: 10px;
+    font-size: 11px;
     background: #0a0f1e;
     border-radius: 4px;
     padding: 4px 6px;
@@ -267,17 +283,17 @@ const STYLES = {
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-all;
-    color: #ccc;
+    color: #d0d0d0;
     margin: 0;
   `,
   descInput: `
-    width: 100%;
+    width: calc(100% - 16px);
     padding: 4px 6px;
-    font-size: 10px;
+    font-size: 11px;
     background: #0f1a2e;
     border: 1px solid #2a2a4a;
     border-radius: 4px;
-    color: #ccc;
+    color: #d0d0d0;
     outline: none;
     box-sizing: border-box;
     margin: 4px 8px 6px;
@@ -321,9 +337,13 @@ const STYLES = {
     background: #1d4ed8;
   `,
   sendBtnDisabled: `
-    background: #1a1a2e;
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    margin-top: 4px;
     color: #888;
     cursor: not-allowed;
+    font-size: 10px;
   `,
   clearBtn: `
     display: block;
@@ -339,7 +359,7 @@ const STYLES = {
   emptyState: `
     padding: 24px 12px;
     text-align: center;
-    color: #999;
+    color: #b0b0b0;
     font-size: 11px;
   `,
   expandTab: `
@@ -418,7 +438,7 @@ export function createPanel(): void {
       if (r[SK_SHORTCUT_CONFIG]?.panelVisible) {
         applyPanelVisibility(true)
       }
-    }).catch(() => {})
+    }).catch(() => { })
   } catch { /* ignore */ }
 
   // Create panel
@@ -539,7 +559,7 @@ export function updateCards(selections: Map<string, {
       detailsHtml += `<div><div style="${STYLES.detailLabel}">${t("detailHtml")}</div><pre style="${STYLES.detailPre}">${escHtml(se.html)}</pre></div>`
     }
 
-    const desc = entry.context.description || ""
+    const desc = ""
     const selectorPreview = se.cssSelector
       ? (se.cssSelector.length > 50 ? se.cssSelector.slice(0, 50) + "..." : se.cssSelector)
       : ""
@@ -551,11 +571,11 @@ export function updateCards(selections: Map<string, {
       <div class="ctx-card-header" data-id="${entry.id}" style="${STYLES.cardHeader}">
         <span style="${STYLES.labelBadge};background:${color.bg};color:${color.text}">${entry.label}</span>
         <span style="${STYLES.cardTag}">${escHtml(se.tag)}</span>
-        <button class="ctx-card-remove" data-id="${entry.id}" style="${STYLES.removeBtn}" title="${t("panelRemoveTooltip")}">${icon("X", 12)}</button>
         <span class="ctx-card-arrow" data-id="${entry.id}" style="${STYLES.cardArrow}">${icon("ChevronDown", 10)}</span>
+        <button class="ctx-card-remove" data-id="${entry.id}" style="${STYLES.removeBtn}" title="${t("panelRemoveTooltip")}">${icon("X", 12)}</button>
       </div>
-      ${selectorPreview ? `<div style="padding:2px 8px;font-size:10px;color:#888;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(selectorPreview)}</div>` : ""}
-      ${textPreview ? `<div style="padding:0 8px 2px;font-size:10px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(textPreview)}</div>` : ""}
+      ${selectorPreview ? `<div style="padding:2px 8px;font-size:10px;color:#b0b0b0;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(selectorPreview)}</div>` : ""}
+      ${textPreview ? `<div style="padding:0 8px 2px;font-size:10px;color:#a0a0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(textPreview)}</div>` : ""}
       <div class="ctx-card-detail" data-id="${entry.id}" style="${STYLES.cardDetail};display:none">
         ${detailsHtml}
       </div>
@@ -599,7 +619,10 @@ function setupDrag(handle: HTMLElement): void {
   handle.parentNode?.replaceChild(newHandle, handle)
 
   newHandle.addEventListener("pointerdown", (e: PointerEvent) => {
-    if ((e.target as HTMLElement).tagName === "BUTTON") return
+    // Don't drag when clicking buttons, SVGs, or interactive elements
+    const target = e.target as HTMLElement
+    if (target.tagName === "BUTTON" || target.tagName === "SVG" || target.tagName === "USE" ||
+        target.closest("button")) return
     isDragging = true
     newHandle.style.cursor = "grabbing"
     const rect = panelEl!.getBoundingClientRect()
@@ -669,9 +692,10 @@ function setupCardExpanders(): void {
 }
 
 function rebindCardEvents(): void {
-  bodyEl?.querySelectorAll(".ctx-card-header").forEach((header) => {
+  bodyEl?.querySelectorAll(".ctx-card-header").forEach((headerEl) => {
+    const header = headerEl as HTMLElement
     header.addEventListener("click", () => {
-      const id = (header as HTMLElement).dataset.id
+      const id = header.dataset.id
       const detail = bodyEl!.querySelector(`.ctx-card-detail[data-id="${id}"]`) as HTMLElement | null
       const arrow = header.querySelector(".ctx-card-arrow")
       if (!detail) return
@@ -681,7 +705,7 @@ function rebindCardEvents(): void {
       header.style.cssText = isExpanded ? STYLES.cardHeader : STYLES.cardHeaderHover
     })
     header.addEventListener("mouseenter", () => {
-      const id = (header as HTMLElement).dataset.id
+      const id = header.dataset.id
       const detail = bodyEl!.querySelector(`.ctx-card-detail[data-id="${id}"]`) as HTMLElement | null
       if (detail && detail.style.display !== "none") return
       header.style.cssText = STYLES.cardHeaderHover
@@ -692,11 +716,12 @@ function rebindCardEvents(): void {
   })
 
   // Remove buttons
-  bodyEl?.querySelectorAll(".ctx-card-remove").forEach((btn) => {
+  bodyEl?.querySelectorAll(".ctx-card-remove").forEach((btnEl) => {
+    const btn = btnEl as HTMLElement
     btn.addEventListener("click", (e) => {
       e.stopPropagation()
-      const id = (btn as HTMLElement).dataset.id
-      try { chrome.runtime.sendMessage({ type: "REMOVE_SELECTION", payload: { id } }).catch(() => {}) } catch { /* noop */ }
+      const id = btn.dataset.id
+      try { chrome.runtime.sendMessage({ type: "REMOVE_SELECTION", payload: { id } }).catch(() => { }) } catch { /* noop */ }
     })
     btn.addEventListener("mouseenter", () => { btn.style.cssText = STYLES.removeBtnHover })
     btn.addEventListener("mouseleave", () => { btn.style.cssText = STYLES.removeBtn })
@@ -708,63 +733,24 @@ function rebindCardEvents(): void {
 // ---------------------------------------------------------------------------
 
 function setupDescriptionInputs(): void {
-  rebindCardEvents() // also rebinds input events
-}
-
-// Rebind description inputs is done in rebindCardEvents
-function rebindDescriptionInputs(): void {
-  bodyEl?.querySelectorAll(".ctx-desc-input").forEach((input) => {
-    const id = (input as HTMLElement).dataset.id
-    // Remove old listeners by cloning
-    const clone = input.cloneNode(true) as HTMLInputElement
-    input.parentNode?.replaceChild(clone, input)
-    clone.addEventListener("input", () => {
-      try {
-        chrome.runtime.sendMessage({
-          type: "UPDATE_DESCRIPTION",
-          payload: { id, description: clone.value },
-        }).catch(() => {})
-      } catch { /* noop */ }
-    })
-  })
-}
-
-// Override rebindCardEvents to also rebind description inputs
-const _origRebind = rebindCardEvents
-function rebindCardEventsAll(): void {
-  _origRebind()
-  rebindDescriptionInputs()
-}
-
-// Patch rebindCardEvents to include description inputs
-const origRebindCardEvents = rebindCardEvents
-// We'll handle this differently - just call rebindDescriptionInputs after
-
-// Actually, let's simplify - just override setupDescriptionInputs to use MutationObserver
-function setupDescriptionInputsObserver(): void {
-  // Rebind description inputs whenever bodyEl changes
   if (!bodyEl) return
   const observer = new MutationObserver(() => {
-    bodyEl?.querySelectorAll(".ctx-desc-input").forEach((input) => {
-      if ((input as HTMLInputElement)._bound) return
-      ;(input as HTMLInputElement)._bound = true
+    bodyEl?.querySelectorAll(".ctx-desc-input").forEach((inputEl) => {
+      const input = inputEl as HTMLInputElement
+      if ((input as any)._descBound) return
+        ; (input as any)._descBound = true
       input.addEventListener("input", () => {
-        const id = (input as HTMLElement).dataset.id
+        const id = input.dataset.id
         try {
           chrome.runtime.sendMessage({
             type: "UPDATE_DESCRIPTION",
-            payload: { id, description: (input as HTMLInputElement).value },
-          }).catch(() => {})
+            payload: { id, description: input.value },
+          }).catch(() => { })
         } catch { /* noop */ }
       })
     })
   })
   observer.observe(bodyEl, { childList: true, subtree: true })
-}
-
-// Override setupDescriptionInputs
-function setupDescriptionInputs(): void {
-  setupDescriptionInputsObserver()
 }
 
 // ---------------------------------------------------------------------------
@@ -780,6 +766,14 @@ function setupPromptSend(): void {
     const hasText = textarea.value.trim().length > 0
     sendBtn.disabled = !hasText
     sendBtn.style.cssText = hasText ? STYLES.sendBtn : STYLES.sendBtnDisabled
+  })
+
+  // Send button hover effects
+  sendBtn.addEventListener("mouseenter", () => {
+    if (!sendBtn.disabled) sendBtn.style.cssText = STYLES.sendBtnHover
+  })
+  sendBtn.addEventListener("mouseleave", () => {
+    sendBtn.style.cssText = sendBtn.disabled ? STYLES.sendBtnDisabled : STYLES.sendBtn
   })
 
   sendBtn.addEventListener("click", () => {
@@ -845,7 +839,7 @@ function setupClearAll(): void {
   const clearBtn = getShadowRoot().getElementById("dom-ctx-clear-btn")
   clearBtn?.addEventListener("click", () => {
     try {
-      chrome.runtime.sendMessage({ type: "CLEAR_SELECTIONS" }).catch(() => {})
+      chrome.runtime.sendMessage({ type: "CLEAR_SELECTIONS" }).catch(() => { })
     } catch { /* noop */ }
   })
 }
@@ -871,10 +865,23 @@ function buildPanelPrompt(): string {
   if (selections.size === 0) return ""
 
   const lines: string[] = ["# DomLens - Element Selections\n"]
+  let hasSourceLocation = false
   for (const [, entry] of selections) {
     const se = entry.context.selectedElement
     lines.push(`## [${entry.label}] Element`)
     lines.push(`- **Tag**: ${se.tag}`)
+
+    // Component info + source location (core differentiator)
+    if (se.component) {
+      lines.push(`- **Component**: ${se.component.componentName}`)
+      if (se.component.sourceLocation) {
+        hasSourceLocation = true
+        const src = se.component.sourceLocation
+        const loc = src.lineNumber > 0 ? `${src.fileName}:${src.lineNumber}` : src.fileName
+        lines.push(`- **Source**: \`${loc}\``)
+      }
+    }
+
     if (se.cssSelector) lines.push(`- **CSS Selector**: \`${se.cssSelector}\``)
     if (se.xpath) lines.push(`- **XPath**: \`${se.xpath}\``)
     if (entry.elementInfo.id) lines.push(`- **ID**: ${entry.elementInfo.id}`)
@@ -895,6 +902,21 @@ function buildPanelPrompt(): string {
       lines.push("- **Computed Styles**:")
       for (const [key, val] of Object.entries(se.styles)) lines.push(`  - ${key}: ${val}`)
     }
+    // Layout chain
+    if (entry.context.layoutChain && entry.context.layoutChain.length > 0) {
+      lines.push("- **Layout Chain**:")
+      for (let i = 0; i < entry.context.layoutChain.length; i++) {
+        const node = entry.context.layoutChain[i]
+        lines.push(`  ${i}: ${node.tag} (${node.display}) ${node.width}px`)
+      }
+    }
+    // Constraint issues
+    if (entry.context.possibleIssues && entry.context.possibleIssues.length > 0) {
+      lines.push("- **Issues**:")
+      for (const issue of entry.context.possibleIssues) {
+        lines.push(`  - [${issue.severity}] ${issue.description}`)
+      }
+    }
     if (se.html) {
       lines.push("- **HTML**:")
       lines.push("```html")
@@ -904,7 +926,11 @@ function buildPanelPrompt(): string {
     lines.push("")
   }
   lines.push("## Task")
-  lines.push("Based on the above element context, please help fix layout or styling issues.")
+  if (hasSourceLocation) {
+    lines.push("Based on the above runtime context, modify the source file directly. After editing, the page will auto-refresh via HMR.")
+  } else {
+    lines.push("Based on the above element context, please help fix layout or styling issues.")
+  }
   return lines.join("\n")
 }
 
@@ -932,7 +958,7 @@ function setupCopyButton(): void {
         setTimeout(() => {
           copyBtn.innerHTML = icon("Copy", 12)
         }, 1500)
-      }).catch(() => {})
+      }).catch(() => { })
     } catch { /* noop */ }
   })
 }

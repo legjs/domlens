@@ -136,8 +136,8 @@
     "description": "Title of the floating panel"
   },
   "panelEmptyState": {
-    "message": "No elements selected. Click on elements to inspect them.",
-    "description": "Message when panel is empty"
+    "message": "Alt+Click — Select Element\nAlt+Click again — Deselect\nCtrl+Alt+Click — Multi-Select\nESC — Clear Last",
+    "description": "Keyboard shortcuts guide when panel is empty"
   },
   "panelCopyTooltip": {
     "message": "Copy Prompt",

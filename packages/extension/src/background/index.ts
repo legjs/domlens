@@ -94,7 +94,7 @@ chrome.runtime.onMessage.addListener(
         return true
 
       case "ELEMENT_SELECTED":
-        handleRelayToPopup(message, sendResponse)
+        handleRelayToPopup(message, sender, sendResponse)
         return false
 
       case "MULTI_ELEMENTS_SELECTED":

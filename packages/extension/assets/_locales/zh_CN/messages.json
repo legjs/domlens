@@ -136,8 +136,8 @@
     "description": "浮动面板的标题"
   },
   "panelEmptyState": {
-    "message": "未选择元素。点击元素进行检查。",
-    "description": "面板为空时的消息"
+    "message": "Alt+Click — 选中元素\nAlt+Click 已选中 — 取消选中\nCtrl+Alt+Click — 多选\nESC — 清除上一个",
+    "description": "面板为空时的快捷键指南"
   },
   "panelCopyTooltip": {
     "message": "复制提示",

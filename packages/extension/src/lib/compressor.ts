@@ -16,7 +16,7 @@ import type { CompressedContext } from '../shared/types';
 import { DEFAULT_CONFIG } from '../shared/constants';
 import { collectElementData } from './collector';
 import { analyzeLayoutChain } from './layout';
-import { analyzeReactComponent } from './react';
+import { analyzeReactComponent, analyzeVueComponent } from './react';
 import { detectConstraints } from './analyzer';
 import { generateCSSSelector, generateXPath, generateHTMLSnippet, collectAccessibilityInfo } from './selector';
 
@@ -36,8 +36,8 @@ export function compressContext(element: HTMLElement): CompressedContext {
   // 2. Analyze the layout chain (ancestors up to body)
   const layoutChain = analyzeLayoutChain(element);
 
-  // 3. Detect React component info (null if not a React tree)
-  const reactInfo = analyzeReactComponent(element);
+  // 3. Detect framework component info (React first, then Vue fallback)
+  const reactInfo = analyzeReactComponent(element) || analyzeVueComponent(element);
 
   // 4. Detect constraint issues
   const possibleIssues = detectConstraints(element);

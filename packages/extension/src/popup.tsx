@@ -230,13 +230,9 @@ function IndexPopup() {
                 </p>
               </div>
             ) : (
-              <div className="bg-[#16213e] rounded-lg p-6 text-center">
-                <p className="text-xs text-[#999]">
-                  {t("noElementsSelected")}
-                </p>
-                <p className="text-[10px] text-[#888] mt-1">
-                  {t("holdAltClick")}
-                </p>
+              <div className="bg-[#16213e] rounded-lg p-4 text-left space-y-1.5 w-full">
+                <p className="text-xs text-[#bbb] font-medium mb-2">{t("shortcuts")}</p>
+                <p className="text-[10px] text-[#999] leading-relaxed whitespace-pre-line">{t("panelEmptyState")}</p>
               </div>
             )}
           </div>
@@ -271,7 +267,7 @@ function SettingsPanel({
   onReset: () => void
 }) {
   return (
-    <div className="flex-1 px-4 py-3 overflow-y-auto space-y-3">
+    <div className="flex-1 px-3 py-3 space-y-3">
       {/* Inspect Key */}
       <div className="bg-[#16213e] rounded-lg p-3">
         <label className="block text-xs font-medium text-[#e0e0e0] mb-1">{t("inspectKey")}</label>

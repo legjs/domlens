@@ -43,7 +43,7 @@ export function HeroSection() {
 
           {/* Dual Install Steps */}
           <div className="mx-auto max-w-2xl">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {/* Step 1: Extension */}
               <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-5 text-left hover:border-primary/30 transition-colors">
                 <div className="flex items-center gap-2.5 mb-3">

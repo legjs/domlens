@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   output: 'export',
+  basePath: '/domlens',
   outputFileTracingRoot: require('path').join(__dirname),
   images: {
     unoptimized: true,

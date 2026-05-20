@@ -39,7 +39,7 @@
     "installStep2Title": "配置 MCP 服务器",
     "installStep2Desc": "将此命令发送给您的 AI 工具，自动完成 MCP 配置。",
     "installHintCommand": "安装 DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
-    "installHintCopy": "安装 DomLens MCP：https://domlens.com/install/mcp-install.md",
+    "installHintCopy": "安装 DomLens MCP：https://legjs.github.io/domlens/install/mcp-install.md",
     "mcpSetupLink": "查看安装指南和兼容工具 →",
     "featuresTitle": "AI 驱动的 DOM 检查，所需的一切",
     "featuresSubtitle": "从元素检查到 AI 上下文传递，DomLens 覆盖完整工作流。",
@@ -215,7 +215,7 @@
       },
       {
         "q": "如何安装 DomLens？",
-        "a": "最简单的方式是向 AI 工具发送 \"安装 DomLens MCP: https://domlens.com/install/mcp-install.md\"，AI 会自动完成所有配置。也可以手动将 MCP 配置添加到工具的设置文件中。"
+        "a": "最简单的方式是向 AI 工具发送 \"安装 DomLens MCP: https://legjs.github.io/domlens/install/mcp-install.md\"，AI 会自动完成所有配置。也可以手动将 MCP 配置添加到工具的设置文件中。"
       },
       {
         "q": "支持哪些 AI 工具？",

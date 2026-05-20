@@ -75,7 +75,7 @@ Browser (自动刷新)
 
 ```
 安装 DomLens MCP：
-https://domlens.com/install/mcp-install.md
+https://legjs.github.io/domlens/install/mcp-install.md
 ```
 
 AI 会自动读取安装文档并完成配置，无需手动编辑任何文件。

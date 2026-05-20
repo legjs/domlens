@@ -38,8 +38,8 @@
     "installStep2Label": "Step 2",
     "installStep2Title": "Configure MCP Server",
     "installStep2Desc": "Send this to your AI tool to auto-configure the MCP connection.",
-    "installHintCommand": "安装 DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
-    "installHintCopy": "安装 DomLens MCP：https://domlens.com/install/mcp-install.md",
+    "installHintCommand": "Install DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
+    "installHintCopy": "Install DomLens MCP：https://domlens.com/install/mcp-install.md",
     "mcpSetupLink": "View setup guide and supported tools →",
     "featuresTitle": "Everything You Need for AI-Powered DOM Inspection",
     "featuresSubtitle": "From element inspection to AI context delivery, DomLens covers the full workflow.",
@@ -191,7 +191,7 @@
     "methodATitle": "Natural Language Install",
     "methodADesc": "Send a single message to your AI tool — it will read the installation guide and configure everything automatically. No manual file editing required.",
     "methodALabel": "Send to your AI tool",
-    "methodACommand": "安装 DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
+    "methodACommand": "Install DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
     "methodANote": "Works with Claude Code, Cursor, Windsurf, and any MCP-compatible AI tool. The AI reads the guide, checks your Node.js version, writes the MCP config (preserving your existing settings), and verifies the installation — all automatically.",
     "methodBTitle": "Manual Setup",
     "installStep1Title": "Install Extension",
@@ -215,7 +215,7 @@
       },
       {
         "q": "How do I install DomLens?",
-        "a": "The easiest way is to send \"安装 DomLens MCP: https://domlens.com/install/mcp-install.md\" to your AI tool — it will configure everything automatically. Alternatively, add the MCP config manually to your tool's settings file."
+        "a": "The easiest way is to send \"Install DomLens MCP: https://legjs.github.io/domlens/install/mcp-install.md\" to your AI tool — it will configure everything automatically. Alternatively, add the MCP config manually to your tool's settings file."
       },
       {
         "q": "Which AI tools are supported?",

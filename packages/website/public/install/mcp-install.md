@@ -1,43 +1,26 @@
-# DomLens MCP Server 安装指南
+# DomLens MCP Server Installation Guide
 
-## 给 AI 的指令
+## Instructions for AI Agents
 
-请按照以下步骤为用户配置 DomLens MCP Server。
+Follow these steps to configure DomLens MCP Server for the user.
 
 ---
 
-## 第 1 步：确认环境
+## Step 1: Verify Environment
 
-运行以下命令检查 Node.js 版本（需要 >= 18）：
+Run the following command to check the Node.js version (requires >= 18):
 
 ```bash
 node -v
 ```
 
-如果未安装或版本过低，提示用户先安装 Node.js。
+If Node.js is not installed or the version is too low, prompt the user to install it first.
 
-## 第 2 步：写入 MCP 配置
+## Step 2: Write MCP Configuration
 
-将以下配置写入用户的 Claude Code MCP 设置文件。
+Write the following configuration to the user's Claude Code MCP settings file.
 
-**配置内容**：
-
-```json
-{
-  "mcpServers": {
-    "domlens": {
-      "command": "npx",
-      "args": ["-y", "@domlens/runtime"],
-      "type": "stdio"
-    }
-  }
-}
-```
-
-**写入方式**（按优先级尝试）：
-
-1. 读取用户已有的 `~/.claude/settings.json`（全局配置），将其中的 `mcpServers` 字段与上面的配置合并（保留用户已有的 MCP Server，只添加或更新 `domlens` 这一项），然后写回。
-2. 如果文件不存在或读取失败，创建文件并写入完整内容：
+**Configuration**:
 
 ```json
 {
@@ -51,37 +34,54 @@ node -v
 }
 ```
 
-**注意**：不要覆盖用户已有的其他 MCP Server 配置，只合并 `domlens` 这一项。
+**How to write** (try in order of priority):
 
-## 第 3 步：安装 Chrome 扩展
+1. Read the user's existing `~/.claude/settings.json` (global config), merge the `mcpServers` field with the above configuration (keep the user's existing MCP Servers, only add or update the `domlens` entry), then write back.
+2. If the file does not exist or reading fails, create the file with the full content:
 
-提示用户安装 DomLens Chrome 扩展：
+```json
+{
+  "mcpServers": {
+    "domlens": {
+      "command": "npx",
+      "args": ["-y", "@domlens/runtime"],
+      "type": "stdio"
+    }
+  }
+}
+```
 
-- Chrome Web Store 链接（发布后填写）
-- 或从源码构建：`pnpm build:extension`，然后在 `chrome://extensions` 加载 `packages/extension/build/chrome-mv3-prod/`
+**Note**: Do not overwrite the user's existing MCP Server configurations. Only merge the `domlens` entry.
 
-## 第 4 步：验证安装
+## Step 3: Install Chrome Extension
 
-1. 提示用户重启 Claude Code 会话（MCP 配置需要重新加载）
-2. 重启后，检查 `domlens` MCP Server 是否可用
-3. 在浏览器中按住 Alt + 点击选中一个页面元素
-4. 调用 `get_latest_context` 工具验证上下文是否成功捕获
+Prompt the user to install the DomLens Chrome extension:
+
+- Chrome Web Store link (to be filled after publication)
+- Or build from source: `pnpm build:extension`, then load `packages/extension/build/chrome-mv3-prod/` in `chrome://extensions`
+
+## Step 4: Verify Installation
+
+1. Prompt the user to restart their Claude Code session (MCP configuration requires a reload)
+2. After restarting, check that the `domlens` MCP Server is available
+3. Hold Alt + click to select a page element in the browser
+4. Call the `get_latest_context` tool to verify that context is captured successfully
 
 ---
 
-## 可用工具
+## Available Tools
 
-安装成功后，以下工具可用：
+After successful installation, the following tools are available:
 
-| 工具 | 说明 |
+| Tool | Description |
 |---|---|
-| `get_latest_context` | 获取最新捕获的 DOM 上下文 |
-| `get_prompt` | 生成完整的 Markdown Prompt |
-| `list_contexts` | 列出历史上下文记录 |
-| `clear_contexts` | 清空历史记录 |
-| `get_user_prompt` | 获取用户在面板中输入的 Prompt |
-| `apply_runtime_patch` | 通知浏览器刷新（源码修改后） |
+| `get_latest_context` | Get the latest captured DOM context |
+| `get_prompt` | Generate a complete Markdown prompt |
+| `list_contexts` | List historical context records |
+| `clear_contexts` | Clear history |
+| `get_user_prompt` | Get the prompt entered by the user in the panel |
+| `apply_runtime_patch` | Notify the browser to refresh (after source code changes) |
 
-## 卸载
+## Uninstall
 
-从 `~/.claude/settings.json` 的 `mcpServers` 中删除 `domlens` 条目即可。
+Remove the `domlens` entry from `mcpServers` in `~/.claude/settings.json`.

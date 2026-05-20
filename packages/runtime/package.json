@@ -1,13 +1,30 @@
 {
   "name": "@domlens/runtime",
   "version": "0.1.0",
-  "description": "Runtime server for DomLens - HTTP API and MCP server",
-  "private": true,
-  "main": "src/index.ts",
-  "scripts": {
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts"
+  "description": "DomLens Runtime - HTTP API & MCP server for AI-powered DOM context bridging",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "domlens-runtime": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "domlens",
+    "mcp",
+    "claude",
+    "dom",
+    "browser",
+    "inspector"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "cors": "^2.8.6",
@@ -18,6 +35,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.14.0",
+    "tsup": "^8.4.0",
     "tsx": "^4.21.0",
     "typescript": "^5.4.5"
   }

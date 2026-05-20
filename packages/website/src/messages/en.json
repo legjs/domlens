@@ -1,7 +1,7 @@
 {
   "Metadata": {
     "siteTitle": "DomLens",
-    "siteDescription": "AI-powered DOM inspection and context awareness. Chrome extension with MCP integration for Claude Code, Cursor, and more."
+    "siteDescription": "AI-powered DOM inspection and context awareness. Chrome extension with MCP integration for Claude Code, Cursor, Windsurf, and more."
   },
   "Nav": {
     "home": "Home",
@@ -25,12 +25,22 @@
   },
   "HomePage": {
     "metaTitle": "DomLens - AI Runtime DOM Inspector",
-    "metaDescription": "AI-powered DOM inspection and context awareness. Inspect elements, capture structured context, and feed it directly to your AI tools via MCP.",
+    "metaDescription": "AI-powered DOM inspection and context awareness for any MCP-compatible AI coding tool. Inspect elements, capture structured context, and feed it directly to your AI via MCP.",
     "heroTitle": "Give AI Agents",
     "heroTitleHighlight": "Runtime DOM Awareness",
     "heroSubtitle": "DomLens bridges the gap between AI coding agents and the live DOM. Inspect elements, capture structured context, and feed it directly to your AI tools via MCP.",
     "ctaInstall": "Install Extension",
     "ctaGithub": "View on GitHub",
+    "installStep1Label": "Step 1",
+    "installStep1Title": "Chrome Extension",
+    "installStep1Desc": "Add DomLens to Chrome to inspect and select page elements.",
+    "installStep1Btn": "Chrome Web Store",
+    "installStep2Label": "Step 2",
+    "installStep2Title": "Configure MCP Server",
+    "installStep2Desc": "Send this to your AI tool to auto-configure the MCP connection.",
+    "installHintCommand": "安装 DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
+    "installHintCopy": "安装 DomLens MCP：https://domlens.com/install/mcp-install.md",
+    "mcpSetupLink": "View setup guide and supported tools →",
     "featuresTitle": "Everything You Need for AI-Powered DOM Inspection",
     "featuresSubtitle": "From element inspection to AI context delivery, DomLens covers the full workflow.",
     "howItWorksTitle": "How It Works",
@@ -42,8 +52,8 @@
     "step3Title": "AI Receives Context",
     "step3Desc": "Your AI tools automatically get structured DOM context via MCP.",
     "mcpTitle": "MCP Integration",
-    "mcpSubtitle": "Native Model Context Protocol support for seamless AI integration",
-    "mcpDesc": "DomLens runs a local MCP server that exposes 5 tools for AI agents. Configure once, and your AI tools gain real-time DOM awareness.",
+    "mcpSubtitle": "Works with any MCP-compatible AI coding tool",
+    "mcpDesc": "DomLens runs a local MCP server that exposes 6 tools for AI agents. Configure once, and any MCP-compatible tool gains real-time DOM awareness.",
     "mcpTools": "Available MCP Tools",
     "ctaTitle": "Ready to Supercharge Your AI Workflow?",
     "ctaSubtitle": "Install DomLens and give your AI coding agents the power of runtime DOM awareness.",
@@ -59,17 +69,29 @@
       "title": "Multi-Element Selection",
       "description": "Select multiple elements simultaneously with Ctrl+Click. Each selection is labeled and can be managed independently."
     },
+    "frameworkAware": {
+      "title": "Framework Aware",
+      "description": "Automatically detects React and Vue components. Captures component names, props, and source locations for precise AI context."
+    },
     "mcp": {
       "title": "MCP Integration",
-      "description": "Native MCP server integration for Claude Code, Cursor, Windsurf, and other AI tools. Zero-config setup with auto-discovery."
+      "description": "Native MCP server works with Claude Code, Cursor, Windsurf, VS Code + Cline, Warp, and any MCP-compatible AI tool."
     },
     "compression": {
       "title": "Context Compression",
       "description": "Intelligent compression engine that reduces DOM context to the most relevant information for efficient AI consumption."
     },
+    "inlinePrompt": {
+      "title": "Inline Prompt",
+      "description": "Write prompts directly on the page near selected elements. Describe what you want fixed and send it straight to your AI tool."
+    },
     "panel": {
       "title": "Floating Panel",
       "description": "Draggable inline panel showing selected element details. Send context directly to your AI tool from the panel."
+    },
+    "livePatch": {
+      "title": "Live Patch",
+      "description": "AI modifies source code and signals the browser to refresh instantly. See changes in real-time without manual page reloads."
     },
     "autoDiscovery": {
       "title": "Auto-Discovery Server",
@@ -96,6 +118,65 @@
     "getUserPrompt": {
       "name": "get_user_prompt",
       "desc": "Get the latest user prompt submitted from the floating panel"
+    },
+    "applyRuntimePatch": {
+      "name": "apply_runtime_patch",
+      "desc": "Signal the browser to refresh after AI modifies source code"
+    }
+  },
+  "ContextShowcase": {
+    "badge": "Structured Context",
+    "title": "What AI Actually Sees",
+    "subtitle": "When you select an element, DomLens captures rich structured context and delivers it directly to your AI tool via MCP.",
+    "headerLabel": "AI context output — Markdown format",
+    "headerStatus": "Sent to AI via MCP",
+    "outputTitle": "# DomLens - Element Selections",
+    "fieldTag": "Tag",
+    "fieldSelector": "CSS Selector",
+    "valueSelector": "section.hero > div.container > button.cta-primary",
+    "fieldClass": "Class",
+    "valueClass": "cta-primary px-6 py-3 rounded-lg font-semibold",
+    "fieldText": "Text",
+    "valueText": "Get Started",
+    "fieldSize": "Size",
+    "valueSize": "160 x 48px",
+    "fieldPosition": "Position",
+    "valuePosition": "top=520, left=560",
+    "fieldStyles": "Computed Styles",
+    "fieldFramework": "Framework",
+    "valueFramework": "React — GetStartedButton (props: variant=\"primary\", size=\"lg\")",
+    "fieldSource": "Source",
+    "valueSource": "src/components/GetStartedButton.tsx:24",
+    "fieldHtml": "HTML",
+    "valueHtml": "&lt;button class=\"cta-primary px-6 py-3 rounded-lg font-semibold\"&gt;Get Started&lt;/button&gt;",
+    "fieldLayout": "Layout Chain",
+    "footerFlow1": "Select element",
+    "footerFlow2": "Context captured",
+    "footerFlow3": "AI receives structured data"
+  },
+  "Workflow": {
+    "title": "The Development Loop",
+    "subtitle": "A seamless cycle from inspection to implementation — AI sees, understands, fixes, and refreshes",
+    "loopLabel": "Continuous improvement loop",
+    "select": {
+      "title": "Select Elements",
+      "desc": "Alt+Click to inspect. Ctrl+Click for multi-select with labeled badges."
+    },
+    "context": {
+      "title": "Capture Context",
+      "desc": "Structured DOM data with styles, layout chain, and framework info."
+    },
+    "ai": {
+      "title": "AI Understands",
+      "desc": "Your AI tool receives context via MCP and generates fixes."
+    },
+    "patch": {
+      "title": "Apply Patch",
+      "desc": "AI modifies your source files directly with full context."
+    },
+    "refresh": {
+      "title": "Live Refresh",
+      "desc": "Browser updates instantly. See changes without manual reload."
     }
   },
   "HelpPage": {
@@ -104,48 +185,69 @@
     "title": "Help Center",
     "subtitle": "Everything you need to know about DomLens",
     "faqTitle": "Frequently Asked Questions",
-    "guideTitle": "Usage Guide",
-    "guideSubtitle": "Step-by-step instructions to get started",
+    "guideTitle": "Installation Guide",
+    "guideSubtitle": "Get started with DomLens in minutes",
+    "recommended": "Recommended",
+    "methodATitle": "Natural Language Install",
+    "methodADesc": "Send a single message to your AI tool — it will read the installation guide and configure everything automatically. No manual file editing required.",
+    "methodALabel": "Send to your AI tool",
+    "methodACommand": "安装 DomLens MCP：\nhttps://domlens.com/install/mcp-install.md",
+    "methodANote": "Works with Claude Code, Cursor, Windsurf, and any MCP-compatible AI tool. The AI reads the guide, checks your Node.js version, writes the MCP config (preserving your existing settings), and verifies the installation — all automatically.",
+    "methodBTitle": "Manual Setup",
+    "installStep1Title": "Install Extension",
+    "installStep1": "Install the DomLens extension from the Chrome Web Store, or load it as an unpacked extension in developer mode.",
+    "installStep2Title": "Start Runtime Server",
+    "installStep2": "The runtime server starts automatically when configured via MCP. To run standalone:",
+    "installStep3Title": "Configure MCP",
+    "installStep3": "Add the following to your AI tool's MCP configuration file:",
+    "installStep4Title": "Verify Installation",
+    "installStep4": "Restart your AI tool to load the MCP config. Then open any webpage, Alt+Click an element, and check if your AI can call get_latest_context successfully.",
+    "compatibleTitle": "Compatible AI Tools",
+    "compatibleDesc": "DomLens works with any tool that supports the Model Context Protocol (MCP) via stdio transport. Same config, different config file locations:",
     "shortcutsTitle": "Keyboard Shortcuts",
     "shortcutsSubtitle": "Quick reference for all available shortcuts",
     "action": "Action",
     "shortcut": "Shortcut",
-    "installStep1": "Install the DomLens extension from the Chrome Web Store.",
-    "installStep2": "Clone the repository and install dependencies:",
-    "installStep3": "Start the local runtime server:",
-    "installStep4": "Configure MCP in your AI tool's settings. Example for Claude Code:",
     "faq": [
       {
         "q": "What is DomLens?",
-        "a": "DomLens is a Chrome extension that provides AI coding agents with runtime DOM context awareness. It allows AI tools like Claude Code to understand the live state of web page elements."
+        "a": "DomLens is a Chrome extension that provides AI coding agents with runtime DOM context awareness. It allows AI tools like Claude Code, Cursor, and Windsurf to understand the live state of web page elements."
       },
       {
-        "q": "How do I install the extension?",
-        "a": "You can install DomLens from the Chrome Web Store, or load it as an unpacked extension in developer mode for development."
-      },
-      {
-        "q": "How do I start the runtime server?",
-        "a": "Run `pnpm runtime:start` in the project directory. The server will auto-discover an available port in the range 4777-4787."
+        "q": "How do I install DomLens?",
+        "a": "The easiest way is to send \"安装 DomLens MCP: https://domlens.com/install/mcp-install.md\" to your AI tool — it will configure everything automatically. Alternatively, add the MCP config manually to your tool's settings file."
       },
       {
         "q": "Which AI tools are supported?",
-        "a": "DomLens supports any AI tool that implements the Model Context Protocol (MCP), including Claude Code, Cursor, and Windsurf."
+        "a": "Any tool that implements the Model Context Protocol (MCP). This includes Claude Code, Cursor, Windsurf, VS Code + Cline, Warp, and any other MCP-compatible client."
       },
       {
         "q": "How does MCP integration work?",
-        "a": "DomLens runs a local MCP server that exposes 5 tools. Configure the server URL in your AI tool's MCP settings, and it will automatically have access to DOM context data."
+        "a": "DomLens runs a local MCP server via stdio that exposes 6 tools. Your AI tool launches it via npx, and it automatically has access to DOM context data captured by the browser extension."
       },
       {
         "q": "Is my data secure?",
-        "a": "Yes. All DOM context data is processed locally on your machine. The runtime server only accepts connections from localhost. No data is sent to external servers."
+        "a": "Yes. All DOM context data is processed locally on your machine. The MCP server communicates via stdio with your AI tool. No data is sent to external servers."
       },
       {
         "q": "What keyboard shortcuts are available?",
-        "a": "Alt+Hover to inspect, Click to select, Ctrl+Click for multi-select, Escape to close overlays. See the shortcuts table below for the full list."
+        "a": "Alt+Hover to inspect, Click to select, Ctrl+Click for multi-select, Escape to close overlays. Shortcuts are fully customizable in the extension settings."
       },
       {
         "q": "How does multi-element selection work?",
         "a": "Hold Ctrl (or Cmd on Mac) and click on elements to select multiple items. Each selection is labeled A-J and shown in the floating panel. Press Escape to remove the last selection."
+      },
+      {
+        "q": "Does it work with React and Vue?",
+        "a": "Yes. DomLens automatically detects React and Vue components, capturing component names, props, and source file locations for precise AI context."
+      },
+      {
+        "q": "How does the live patch feature work?",
+        "a": "After AI modifies your source code, the apply_runtime_patch MCP tool signals the browser to refresh, letting you see changes instantly without manual page reloads."
+      },
+      {
+        "q": "What is the natural language install method?",
+        "a": "Instead of manually editing config files, just send the installation guide URL to your AI tool. It reads the guide, checks your environment, writes the MCP config (preserving existing settings), and verifies everything works — all automatically."
       }
     ]
   },

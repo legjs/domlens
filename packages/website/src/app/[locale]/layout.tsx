@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, getTranslations } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { ThemeProvider } from 'next-themes'
-import { inter, jetbrainsMono } from '@/lib/fonts'
+import { sora, dmSans, jetbrainsMono } from '@/lib/fonts'
 import { routing } from '@/i18n/routing'
 import { setRequestLocale } from 'next-intl/server'
 import { Header } from '@/components/layout/header'
@@ -59,9 +59,9 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+        className={`${sora.variable} ${dmSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="dark" disableSystem enableSystem>
           <NextIntlClientProvider messages={messages}>
             <div className="flex min-h-screen flex-col">
               <Header />

@@ -30,6 +30,7 @@ type MessageType =
   | "SEND_PROMPT"
   | "UPDATE_DESCRIPTION"
   | "SETTINGS_UPDATED"
+  | "ANALYZE_FW"
 
 interface ExtensionMessage {
   type: MessageType
@@ -120,6 +121,10 @@ chrome.runtime.onMessage.addListener(
         handleSendPrompt(message, sender, sendResponse)
         return true
 
+      case "ANALYZE_FW":
+        handleAnalyzeFramework(message, sender, sendResponse)
+        return true
+
       default:
         sendResponse({ success: false, error: `Unknown message type: ${message.type}` })
         return false
@@ -175,7 +180,8 @@ async function handleToggleInspector(
 /**
  * MULTI_ELEMENTS_SELECTED — Content → Background → Popup
  *
- * Injects tabId into payload and relays to popup.
+ * Injects tabId into payload, persists to storage, and relays to popup.
+ * Storage persistence ensures popup can restore selections on reopen.
  */
 function handleMultiElementsSelected(
   message: ExtensionMessage,
@@ -187,6 +193,11 @@ function handleMultiElementsSelected(
   if (sender.tab?.id && !payload.tabId) {
     payload.tabId = sender.tab.id
   }
+
+  // Persist to storage so popup can restore on reopen
+  try {
+    chrome.storage.local.set({ selected_contexts: payload.contexts }).catch(() => {})
+  } catch { /* ignore */ }
 
   // Relay to popup
   try {
@@ -391,3 +402,261 @@ chrome.action.onClicked.addListener(async (tab) => {
     console.error("[DomLens] Error on icon click:", err)
   }
 })
+
+// ---------------------------------------------------------------------------
+// Framework Analysis (MAIN world execution)
+// ---------------------------------------------------------------------------
+
+/**
+ * ANALYZE_FW — Content Script → Background → executeScript(MAIN world)
+ *
+ * Uses chrome.scripting.executeScript with world: "MAIN" to run the
+ * framework analysis function in the page's JavaScript context, where
+ * __reactFiber$, __vueParentComponent, etc. are accessible.
+ */
+async function handleAnalyzeFramework(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: unknown) => void
+): Promise<void> {
+  const payload = message.payload as { selector?: string } | undefined
+  if (!payload?.selector || !sender.tab?.id) {
+    sendResponse({ success: false, error: "Missing selector or tabId" })
+    return
+  }
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: "MAIN" as any,
+      func: FW_ANALYZER_FN,
+      args: [payload.selector],
+    })
+
+    const result = results?.[0]?.result ?? null
+    sendResponse({ success: true, data: result })
+  } catch (err) {
+    // Some pages (chrome://, etc.) don't allow scripting
+    sendResponse({ success: false, error: String(err) })
+  }
+}
+
+/**
+ * This function is serialized by chrome.scripting.executeScript and
+ * runs in the page's MAIN world. DO NOT reference external variables.
+ */
+function FW_ANALYZER_FN(selector: string): any {
+  const el = document.querySelector(selector) as HTMLElement | null
+  if (!el) return null
+
+  let result: any = null
+
+  // --- React Fiber ---
+  try {
+    const keys = Object.keys(el)
+    for (const key of keys) {
+      if (key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$")) {
+        const fiber = (el as any)[key]
+        if (fiber) {
+          result = fwAnalyzeReact(fiber)
+          break
+        }
+      }
+    }
+  } catch {}
+
+  // --- Vue ---
+  if (!result) {
+    try { result = fwAnalyzeVue(el) } catch {}
+  }
+
+  return result
+}
+
+function fwAnalyzeReact(fiber: any): any {
+  let current = fiber
+  let depth = 0
+  let componentName = "Unknown"
+
+  while (current && depth < 30) {
+    const ft = current.type
+    if (typeof ft === "function") {
+      componentName = ft.displayName || ft.name || "Unknown"
+      if (componentName !== "Unknown") break
+    } else if (ft && typeof ft === "object") {
+      componentName = ft.displayName || ft.name || (ft.render && (ft.render.displayName || ft.render.name)) || "Unknown"
+      if (componentName !== "Unknown") break
+    }
+    current = current.return
+    depth++
+  }
+
+  // _debugSource for source mapping
+  let sourceLocation = null
+  current = fiber
+  depth = 0
+  while (current && depth < 40) {
+    if (typeof current.type !== "string" && current._debugSource) {
+      const src = current._debugSource
+      if (src && src.fileName) {
+        sourceLocation = { fileName: src.fileName, lineNumber: src.lineNumber || 0 }
+        if (src.columnNumber != null) (sourceLocation as any).columnNumber = src.columnNumber
+        break
+      }
+    }
+    current = current.return
+    depth++
+  }
+
+  // UI-relevant props
+  const props = fiber.memoizedProps
+  const allowlist = ["className", "style", "disabled", "placeholder", "href", "src", "alt", "title", "role", "aria-label", "type", "name", "value"]
+  let uiProps: any = null
+  if (props && typeof props === "object") {
+    uiProps = {}
+    for (const k of Object.keys(props)) {
+      if (allowlist.indexOf(k) !== -1) {
+        const v = props[k]
+        if (v === null || v === undefined || typeof v !== "object") {
+          uiProps[k] = v
+        } else if (typeof v === "object" && !Array.isArray(v)) {
+          try { uiProps[k] = Object.assign({}, v) } catch { uiProps[k] = "[Object]" }
+        }
+      }
+    }
+    if (Object.keys(uiProps).length === 0) uiProps = null
+  }
+
+  return {
+    componentName,
+    ...(uiProps ? { props: uiProps } : {}),
+    ...(fiber.stateNode ? { stateNode: true } : {}),
+    ...(sourceLocation ? { sourceLocation } : {}),
+  }
+}
+
+function fwAnalyzeVue(el: HTMLElement): any {
+  // Strategy 1: __vueParentComponent (Vue 3 dev)
+  let current: HTMLElement | null = el
+  let depth = 0
+  while (current && depth < 20) {
+    const instance = (current as any).__vueParentComponent
+    if (instance) {
+      const r = fwExtractVue3(instance)
+      if (r) return r
+    }
+    current = current.parentElement
+    depth++
+  }
+
+  // Strategy 2: Vue 2 __vue__
+  current = el
+  depth = 0
+  while (current && depth < 20) {
+    const instance = (current as any).__vue__
+    if (instance) return fwExtractVue2(instance)
+    current = current.parentElement
+    depth++
+  }
+
+  // Strategy 3: VNode tree (production-safe)
+  let container: HTMLElement | null = el
+  while (container && !(container as any).__vue_app__) {
+    container = container.parentElement
+  }
+  if (container) {
+    const rootVNode = (container as any)._vnode
+    if (rootVNode) {
+      const instance = fwFindDeepest(rootVNode, el)
+      if (instance) return fwExtractVue3(instance)
+    }
+  }
+
+  return null
+}
+
+function fwExtractVue3(instance: any): any {
+  try {
+    const type = instance && instance.type
+    if (!type) return null
+    const componentName = type.displayName || type.name || (typeof type === "string" ? type : "Anonymous") || "Anonymous"
+    const sourceFile = type.__file
+    let sourceLocation = null
+    if (sourceFile) {
+      const m = sourceFile.match(/[\\/]src[\\/](.+)/)
+      const cleanPath = m ? "src/" + m[1].replace(/\\/g, "/") : sourceFile.replace(/\\/g, "/").split("/").slice(-3).join("/")
+      sourceLocation = { fileName: cleanPath, lineNumber: 0 }
+    }
+    return { componentName, ...(sourceLocation ? { sourceLocation } : {}) }
+  } catch { return null }
+}
+
+function fwExtractVue2(instance: any): any {
+  try {
+    const options = instance && instance.$options
+    if (!options) return null
+    const componentName = options.name || options._componentTag || (instance.$root === instance ? "Root" : "Anonymous")
+    const sourceFile = options.__file
+    let sourceLocation = null
+    if (sourceFile) {
+      const m = sourceFile.match(/[\\/]src[\\/](.+)/)
+      const cleanPath = m ? "src/" + m[1].replace(/\\/g, "/") : sourceFile.replace(/\\/g, "/").split("/").slice(-3).join("/")
+      sourceLocation = { fileName: cleanPath, lineNumber: 0 }
+    }
+    return { componentName, ...(sourceLocation ? { sourceLocation } : {}) }
+  } catch { return null }
+}
+
+function fwFindDeepest(vnode: any, targetEl: HTMLElement): any {
+  if (!vnode) return null
+  if (vnode.component) {
+    const instance = vnode.component
+    const subTree = instance.subTree
+    if (subTree && fwIsInTree(subTree, targetEl)) {
+      const deeper = fwFindInChildren(subTree, targetEl)
+      if (deeper) return deeper
+      return instance
+    }
+  }
+  if (Array.isArray(vnode.children)) {
+    for (let i = 0; i < vnode.children.length; i++) {
+      const r = fwFindDeepest(vnode.children[i], targetEl)
+      if (r) return r
+    }
+  }
+  return null
+}
+
+function fwFindInChildren(subTree: any, targetEl: HTMLElement): any {
+  if (!subTree) return null
+  if (Array.isArray(subTree.children)) {
+    for (let i = 0; i < subTree.children.length; i++) {
+      const r = fwFindDeepest(subTree.children[i], targetEl)
+      if (r) return r
+    }
+  }
+  if (Array.isArray(subTree.dynamicChildren)) {
+    for (let i = 0; i < subTree.dynamicChildren.length; i++) {
+      const r = fwFindDeepest(subTree.dynamicChildren[i], targetEl)
+      if (r) return r
+    }
+  }
+  return null
+}
+
+function fwIsInTree(vnode: any, target: HTMLElement): boolean {
+  if (!vnode) return false
+  if (vnode.el === target) return true
+  if (Array.isArray(vnode.children)) {
+    for (let i = 0; i < vnode.children.length; i++) {
+      if (fwIsInTree(vnode.children[i], target)) return true
+    }
+  }
+  if (vnode.component && vnode.component.subTree) return fwIsInTree(vnode.component.subTree, target)
+  if (Array.isArray(vnode.dynamicChildren)) {
+    for (let i = 0; i < vnode.dynamicChildren.length; i++) {
+      if (fwIsInTree(vnode.dynamicChildren[i], target)) return true
+    }
+  }
+  return false
+}

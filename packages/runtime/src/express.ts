@@ -5,7 +5,7 @@
  */
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { contextStore } from './store';
+import { contextStore, type RefreshPatch } from './store';
 import type {
   ContextCapturePayload,
   ApiResponse,
@@ -166,6 +166,16 @@ export function createApp(): Express {
     res.json({
       success: true,
       data: entry,
+      timestamp: Date.now(),
+    });
+  });
+
+  // GET /api/patches — pop pending refresh patches (consumed by extension polling)
+  app.get('/api/patches', (_req: Request, res: Response<ApiResponse<RefreshPatch[]>>) => {
+    const patches = contextStore.popPatches();
+    res.json({
+      success: true,
+      data: patches,
       timestamp: Date.now(),
     });
   });

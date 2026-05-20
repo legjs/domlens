@@ -2,9 +2,9 @@ import { useEffect, useCallback, useRef, useState } from "react"
 import "~src/style.css"
 import usePopupStore, { loadPersistedState } from "~store"
 import type { SelectedContext, ShortcutConfig } from "~shared/types"
-import { SERVER_PORT_RANGE, SK_SERVER_PORT, SK_SHORTCUT_CONFIG, INSPECT_KEYS, MULTI_SELECT_KEYS, DEFAULT_SHORTCUT_CONFIG } from "~shared/constants"
+import { SERVER_PORT_RANGE, SK_SERVER_PORT, SK_SHORTCUT_CONFIG, INSPECT_KEYS, MULTI_SELECT_KEYS, DEFAULT_SHORTCUT_CONFIG, LABEL_COLORS } from "~shared/constants"
 import { t } from "~lib/i18n"
-import { Settings, ArrowLeft } from "lucide-react"
+import { Settings, ArrowLeft, ChevronDown, X, Trash2 } from "lucide-react"
 
 function IndexPopup() {
   const {
@@ -23,6 +23,7 @@ function IndexPopup() {
 
   const [showSettings, setShowSettings] = useState(false)
   const [shortcutConfig, setShortcutConfig] = useState<ShortcutConfig>({ ...DEFAULT_SHORTCUT_CONFIG })
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
   // Load shortcut config on mount
   useEffect(() => {
     chrome.storage.local.get(SK_SHORTCUT_CONFIG).then((r) => {
@@ -217,18 +218,148 @@ function IndexPopup() {
           </div>
 
           {/* Status info */}
-          <div className="flex-1 px-4 py-3 flex flex-col items-center justify-center gap-3">
+          <div className="flex-1 px-4 py-3 flex flex-col gap-2 overflow-y-auto min-h-0">
             {selectedContexts.length > 0 ? (
-              <div className="text-center">
-                <p className="text-xs text-[#bbb]">
-                  {selectedContexts.length === 1
-                    ? `1 ${t("elementLabel")}`
-                    : `${selectedContexts.length} ${t("elementsLabel")}`}
-                </p>
-                <p className="text-[10px] text-[#999] mt-1">
-                  {t("seeFloatingPanel")}
-                </p>
-              </div>
+              <>
+                {selectedContexts.map((ctx) => {
+                  const se = ctx.context?.selectedElement
+                  const colorIndex = ctx.label.charCodeAt(0) - 65
+                  const color = LABEL_COLORS[colorIndex % LABEL_COLORS.length]
+                  const isExpanded = expandedCards.has(ctx.id)
+                  const selectorPreview = se?.cssSelector
+                    ? (se.cssSelector.length > 50 ? se.cssSelector.slice(0, 50) + "..." : se.cssSelector)
+                    : ""
+                  const textPreview = se?.text
+                    ? (se.text.length > 40 ? se.text.slice(0, 40) + "..." : se.text)
+                    : ""
+
+                  return (
+                    <div key={ctx.id} className="bg-[#16213e] rounded-lg overflow-hidden shrink-0">
+                      {/* Card header */}
+                      <div
+                        className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:bg-[#1a2745] transition-colors"
+                        onClick={() => {
+                          setExpandedCards(prev => {
+                            const next = new Set(prev)
+                            if (next.has(ctx.id)) next.delete(ctx.id)
+                            else next.add(ctx.id)
+                            return next
+                          })
+                        }}
+                      >
+                        <span
+                          className="w-[18px] h-[18px] rounded flex items-center justify-center text-[10px] font-bold font-mono shrink-0"
+                          style={{ background: color.bg, color: color.text }}
+                        >
+                          {ctx.label}
+                        </span>
+                        <span className="text-[11px] text-[#ccc] font-mono truncate">
+                          {se?.tag || ctx.elementInfo.tagName}
+                        </span>
+                        <ChevronDown
+                          size={10}
+                          className={`text-[#aaa] shrink-0 ml-auto transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            chrome.runtime.sendMessage({ type: "REMOVE_SELECTION", payload: { id: ctx.id } })
+                            setSelectedContexts(selectedContexts.filter(c => c.id !== ctx.id))
+                          }}
+                          className="text-[#999] hover:text-[#e74c3c] transition-colors p-0.5 shrink-0"
+                          title={t("panelRemoveTooltip")}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+
+                      {/* Preview lines */}
+                      {selectorPreview && (
+                        <div className="px-2 text-[10px] text-[#b0b0b0] font-mono whitespace-nowrap overflow-hidden text-ellipsis">
+                          {selectorPreview}
+                        </div>
+                      )}
+                      {textPreview && (
+                        <div className="px-2 pb-1 text-[10px] text-[#a0a0a0] whitespace-nowrap overflow-hidden text-ellipsis">
+                          {textPreview}
+                        </div>
+                      )}
+
+                      {/* Expanded details */}
+                      {isExpanded && (
+                        <div className="px-2 py-1.5 border-t border-[#2a2a4a] text-[11px] space-y-1.5">
+                          {se?.cssSelector && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">CSS Selector</div>
+                              <code className="text-[11px] text-[#4dabf7] break-all">{se.cssSelector}</code>
+                            </div>
+                          )}
+                          {se?.xpath && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">XPath</div>
+                              <code className="text-[11px] text-[#ffa94d] break-all">{se.xpath}</code>
+                            </div>
+                          )}
+                          {se?.rect && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">{t("detailBoundingBox")}</div>
+                              <span className="text-[10px] text-[#ccc] font-mono">
+                                {Math.round(se.rect.width)} x {Math.round(se.rect.height)}px | pos: ({Math.round(se.rect.top)}, {Math.round(se.rect.left)})
+                              </span>
+                            </div>
+                          )}
+                          {se?.accessibility?.role && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">{t("detailAccessibility")}</div>
+                              <span className="text-[10px] text-[#ccc]">
+                                role: <span className="text-[#69db7c]">{se.accessibility.role}</span>
+                                {se.accessibility.ariaLabel && <> | aria-label: <span className="text-[#69db7c]">{se.accessibility.ariaLabel}</span></>}
+                                {se.accessibility.isFocusable && <span className="text-[#888]"> [focusable]</span>}
+                                {se.accessibility.isInteractive && <span className="text-[#888]"> [interactive]</span>}
+                              </span>
+                            </div>
+                          )}
+                          {se?.component?.componentName && se.component.componentName !== "Unknown" && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">Component</div>
+                              <span className="text-[11px] text-[#d0d0d0]">{se.component.componentName}</span>
+                            </div>
+                          )}
+                          {se?.component?.sourceLocation && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">Source</div>
+                              <span className="text-[11px] text-[#d0d0d0] font-mono">
+                                {se.component.sourceLocation.fileName}:{se.component.sourceLocation.lineNumber}
+                              </span>
+                            </div>
+                          )}
+                          {se?.styles && Object.keys(se.styles).length > 0 && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">{t("detailComputedStyles")}</div>
+                              <div className="max-h-[60px] overflow-y-auto space-y-0.5">
+                                {Object.entries(se.styles).map(([k, v]) => (
+                                  <div key={k} className="flex gap-1">
+                                    <span className="text-[#888] shrink-0">{k}:</span>
+                                    <span className="text-[#ccc] break-all">{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {se?.html && (
+                            <div>
+                              <div className="text-[10px] text-[#b0b0b0] uppercase tracking-wider mb-0.5">HTML</div>
+                              <pre className="text-[11px] bg-[#0a0f1e] rounded p-1 max-h-[60px] overflow-auto font-mono leading-tight whitespace-pre-wrap break-all text-[#d0d0d0] m-0">
+                                {se.html.length > 300 ? se.html.slice(0, 300) + "..." : se.html}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
             ) : (
               <div className="bg-[#16213e] rounded-lg p-4 text-left space-y-1.5 w-full">
                 <p className="text-xs text-[#bbb] font-medium mb-2">{t("shortcuts")}</p>
@@ -444,6 +575,16 @@ function buildMultiPrompt(contexts: SelectedContext[]): string {
     const descLine = ctx.description ? ` (${ctx.description})` : ""
     lines.push(`## [${ctx.label}] Element${descLine}`)
     lines.push(`- **Tag**: ${se?.tag || ctx.elementInfo.tagName}`)
+
+    // Component & Source info
+    const comp = se?.component
+    if (comp?.componentName && comp.componentName !== "Unknown") {
+      lines.push(`- **Component**: ${comp.componentName}`)
+    }
+    if (comp?.sourceLocation) {
+      const loc = comp.sourceLocation
+      lines.push(`- **Source**: ${loc.fileName}:${loc.lineNumber}`)
+    }
 
     if (se?.cssSelector) lines.push(`- **CSS Selector**: \`${se.cssSelector}\``)
     if (se?.xpath) lines.push(`- **XPath**: \`${se.xpath}\``)

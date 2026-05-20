@@ -45,7 +45,7 @@ export function buildPrompt(context: CompressedContext): string {
   if (issuesSection) sections.push(issuesSection);
 
   // Task
-  sections.push(buildTaskSection());
+  sections.push(buildTaskSection(context));
 
   return sections.join('\n');
 }
@@ -63,6 +63,15 @@ function buildComponentSection(context: CompressedContext): string | null {
 
   const lines: string[] = ['## Selected Component'];
   lines.push(`- **Component**: ${component.componentName}`);
+
+  // Source location — the key differentiator for AI source code editing
+  if (component.sourceLocation) {
+    const src = component.sourceLocation;
+    const location = src.lineNumber > 0
+      ? `${src.fileName}:${src.lineNumber}`
+      : src.fileName;
+    lines.push(`- **Source**: \`${location}\``);
+  }
 
   if (component.props && Object.keys(component.props).length > 0) {
     // Show only the first 5 props to keep the prompt compact
@@ -157,7 +166,14 @@ function buildIssuesSection(context: CompressedContext): string | null {
 /**
  * Closing "Task" section — always emitted to guide the AI.
  */
-function buildTaskSection(): string {
+function buildTaskSection(context: CompressedContext): string {
+  const hasSource = context.selectedElement.component?.sourceLocation;
+
+  if (hasSource) {
+    return '\n## Task\nBased on the above runtime context, modify the source file directly. ' +
+      'After editing, call the `apply_runtime_patch` tool to notify the browser to refresh.\n';
+  }
+
   return '\n## Task\nBased on the above runtime context, please help fix layout issues for this element.\n';
 }
 

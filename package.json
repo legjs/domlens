@@ -10,8 +10,9 @@
     "dev:website": "pnpm --filter @domlens/website dev",
     "build:website": "pnpm --filter @domlens/website build",
     "dev:runtime": "pnpm --filter @domlens/runtime dev",
+    "build:runtime": "pnpm --filter @domlens/runtime build",
     "start:runtime": "pnpm --filter @domlens/runtime start",
-    "build": "pnpm build:extension && pnpm build:website"
+    "build": "pnpm build:runtime && pnpm build:extension && pnpm build:website"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

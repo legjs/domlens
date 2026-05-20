@@ -971,6 +971,10 @@ function applyPanelVisibility(visible: boolean): void {
   panelVisible = visible
   if (!panelEl) return
   panelEl.style.display = visible ? "flex" : "none"
+  // Refresh cards with current selections when panel becomes visible
+  if (visible) {
+    try { updateCards(getSelections()) } catch { /* ignore */ }
+  }
 }
 
 /** Set panel visibility (public API for inspector) */

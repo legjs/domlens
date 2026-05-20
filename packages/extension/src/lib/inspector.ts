@@ -39,6 +39,10 @@ let lastMouseX = 0
 let lastMouseY = 0
 let shortcutConfig: ShortcutConfig = { ...DEFAULT_SHORTCUT_CONFIG }
 
+// Hold delay: only activate inspect mode after holding the key for this duration
+const HOLD_DELAY_MS = 150
+let holdTimer: ReturnType<typeof setTimeout> | null = null
+
 // Load shortcut config from storage
 async function loadShortcutConfig(): Promise<void> {
   try {
@@ -138,9 +142,15 @@ export function clearSelections(): void {
 
 function onKeyDown(e: KeyboardEvent): void {
   if (e.key === shortcutConfig.inspectKey && !altHeld) {
-    e.preventDefault() // Prevent browser menu bar activation on Windows
-    altHeld = true
-    recomputeActivation()
+    e.preventDefault()
+    e.stopPropagation() // Prevent browser from entering menu-bar mode on Windows
+    // Start hold timer — only activate after sustained hold
+    if (holdTimer) clearTimeout(holdTimer)
+    holdTimer = setTimeout(() => {
+      holdTimer = null
+      altHeld = true
+      recomputeActivation()
+    }, HOLD_DELAY_MS)
     return
   }
   // ESC: remove last selection in multi-select, clear all in single-select
@@ -178,15 +188,40 @@ function onKeyDown(e: KeyboardEvent): void {
 }
 
 function onKeyUp(e: KeyboardEvent): void {
-  if (e.key === shortcutConfig.inspectKey && altHeld) {
-    e.preventDefault() // Prevent browser menu bar activation on Windows
-    altHeld = false
-    recomputeActivation()
+  if (e.key === shortcutConfig.inspectKey) {
+    e.preventDefault()
+    e.stopPropagation() // Prevent browser menu bar activation on Windows
+    // Cancel pending hold timer if key released before delay elapsed
+    if (holdTimer) {
+      clearTimeout(holdTimer)
+      holdTimer = null
+    }
+    if (altHeld) {
+      altHeld = false
+      recomputeActivation()
+    }
+    // Force browser out of menu-bar mode: blur any focused element so
+    // subsequent Alt keydown events reach the page's keydown listener.
+    if (document.activeElement && document.activeElement !== document.body) {
+      try { (document.activeElement as HTMLElement).blur() } catch { /* ignore */ }
+    }
   }
 }
 
 document.addEventListener("keydown", onKeyDown, true)
 document.addEventListener("keyup", onKeyUp, true)
+
+// Reset altHeld when window loses focus (prevents stuck state when Alt activates browser menu bar)
+window.addEventListener("blur", () => {
+  if (holdTimer) {
+    clearTimeout(holdTimer)
+    holdTimer = null
+  }
+  if (altHeld) {
+    altHeld = false
+    recomputeActivation()
+  }
+}, true)
 
 // Always track mouse position for ESC-specific-removal hit-testing
 document.addEventListener("mousemove", (e: MouseEvent) => {
@@ -213,7 +248,7 @@ function onMouseMove(e: MouseEvent): void {
   showOverlay({ top: rect.top, left: rect.left, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom })
 }
 
-function onClick(e: MouseEvent): void {
+async function onClick(e: MouseEvent): Promise<void> {
   if (!inspectActive) return
 
   // If toggleActive + inspectRequiresShortcut, only allow click when inspect key is held
@@ -249,7 +284,7 @@ function onClick(e: MouseEvent): void {
     }
   }
 
-  if (isMultiSelect) { addSelection(target) } else { clearSelections(); addSelection(target) }
+  if (isMultiSelect) { await addSelection(target) } else { clearSelections(); await addSelection(target) }
   hideOverlay()
 }
 
@@ -269,7 +304,7 @@ function onScroll(): void {
 
 // Selection management
 
-function addSelection(element: Element): void {
+async function addSelection(element: Element): Promise<void> {
   // Skip if element is already selected
   for (const [, entry] of selections) {
     if (entry.element === element) return
@@ -279,7 +314,7 @@ function addSelection(element: Element): void {
   nextLabelIndex++
   const elementInfo = buildElementInfo(element)
   let context: CompressedContext | null = null
-  try { if (element instanceof HTMLElement) { context = compressContext(element) } } catch (err) { console.warn("[DomLens] compress failed:", err) }
+  try { if (element instanceof HTMLElement) { context = await compressContext(element) } } catch (err) { console.warn("[DomLens] compress failed:", err) }
   if (!context) return
   selections.set(id, { id, label, element, elementInfo, context })
   const rect = element.getBoundingClientRect()
@@ -367,4 +402,4 @@ chrome.runtime.onMessage.addListener((message: { type: string; payload?: unknown
   sendResponse({ success: false, error: "Unknown message type" }); return false
 })
 
-window.addEventListener("unload", () => { deactivateInspect(); toggleActive = false; altHeld = false; destroyAllOverlays(); destroyPanel(); destroyInlinePrompt(); selections.clear() })
+window.addEventListener("unload", () => { deactivateInspect(); toggleActive = false; altHeld = false; if (holdTimer) { clearTimeout(holdTimer); holdTimer = null }; destroyAllOverlays(); destroyPanel(); destroyInlinePrompt(); selections.clear() })

@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { setRequestLocale } from 'next-intl/server'
 import { HeroSection } from '@/components/home/hero-section'
+import { ContextShowcase } from '@/components/home/context-showcase'
 import { FeaturesSection } from '@/components/home/features-section'
+import { WorkflowSection } from '@/components/home/workflow-section'
 import { HowItWorksSection } from '@/components/home/how-it-works'
 import { McpSection } from '@/components/home/mcp-section'
 import { CtaSection } from '@/components/home/cta-section'
@@ -61,7 +63,9 @@ export default async function HomePage({
     <>
       <SoftwareJsonLd />
       <HeroSection />
+      <ContextShowcase />
       <FeaturesSection />
+      <WorkflowSection />
       <HowItWorksSection />
       <McpSection />
       <CtaSection />

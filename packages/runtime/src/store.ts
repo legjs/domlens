@@ -15,12 +15,24 @@ export interface UserPromptEntry {
 }
 
 /**
+ * Refresh patch signal sent by AI via apply_runtime_patch tool.
+ * The extension polls for these and triggers a page refresh.
+ */
+export interface RefreshPatch {
+  id: string;
+  timestamp: number;
+  reason: string;
+  action: 'refresh';
+}
+
+/**
  * In-memory store for context capture entries.
  * Supports tab isolation: entries are grouped by tabId.
  */
 export class ContextStore {
   private buckets: Map<string, Map<string, ContextEntry>> = new Map();
   private promptHistory: UserPromptEntry[] = [];
+  private patchQueue: RefreshPatch[] = [];
   private maxHistorySize: number;
 
   constructor(maxHistorySize: number = MAX_CONTEXT_HISTORY) {
@@ -123,6 +135,27 @@ export class ContextStore {
 
   sizeOf(tabId: number): number {
     return this.getBucket(tabId).size;
+  }
+
+  /**
+   * Push a refresh patch signal from AI (via apply_runtime_patch MCP tool).
+   * The extension polls for these signals and triggers page refresh.
+   */
+  pushPatch(patch: RefreshPatch): void {
+    this.patchQueue.push(patch);
+    // Keep only the latest 5 patches
+    if (this.patchQueue.length > 5) {
+      this.patchQueue = this.patchQueue.slice(-5);
+    }
+  }
+
+  /**
+   * Pop all pending refresh patches (consumed by extension polling).
+   */
+  popPatches(): RefreshPatch[] {
+    const patches = [...this.patchQueue];
+    this.patchQueue = [];
+    return patches;
   }
 
   private sortAndSlice(bucket: Map<string, ContextEntry>, limit: number): ContextEntry[] {

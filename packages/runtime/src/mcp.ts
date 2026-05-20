@@ -1,11 +1,13 @@
 /**
  * MCP (Model Context Protocol) Server Module
  *
- * Exposes 4 tools over stdio transport for AI coding agents:
- *   - get_latest_context: Return the most recent DOM context entry
- *   - get_prompt:          Build a Markdown prompt from the latest context
- *   - list_contexts:       List stored context history (with optional limit)
- *   - clear_contexts:      Clear all stored context entries
+ * Exposes 6 tools over stdio transport for AI coding agents:
+ *   - get_latest_context:  Return the most recent DOM context entry
+ *   - get_prompt:           Build a Markdown prompt from the latest context
+ *   - list_contexts:        List stored context history (with optional limit)
+ *   - clear_contexts:       Clear all stored context entries
+ *   - get_user_prompt:      Get the latest user prompt from the extension panel
+ *   - apply_runtime_patch:  Notify the browser to refresh after source code changes
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -206,6 +208,48 @@ export async function startMcpServer(): Promise<void> {
 
       return {
         content: [{ type: 'text' as const, text: lines.join('\n') }],
+      };
+    },
+  );
+
+  // --- Tool: apply_runtime_patch ---
+  server.registerTool(
+    'apply_runtime_patch',
+    {
+      description:
+        'Notify the browser extension to refresh the page after AI has modified source code. ' +
+        'Call this after editing frontend source files so the user can see the result via HMR or full page reload. ' +
+        'Returns confirmation of the refresh signal.',
+      inputSchema: z.object({
+        reason: z
+          .string()
+          .optional()
+          .describe('Brief description of what was changed (e.g. "Updated button color in SubmitButton.tsx")'),
+      }),
+    },
+    async ({ reason }) => {
+      // Signal the extension to refresh via the shared context store
+      const patch = {
+        id: `patch-${Date.now()}`,
+        timestamp: Date.now(),
+        reason: reason || 'Source code updated by AI',
+        action: 'refresh' as const,
+      };
+
+      // Store the patch signal so the extension can pick it up via polling
+      contextStore.pushPatch(patch);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              message: 'Refresh signal sent to browser extension. Page will reload or HMR will update.',
+              patch,
+            }),
+          },
+        ],
       };
     },
   );

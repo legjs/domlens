@@ -46,16 +46,10 @@ export default async function HelpPage({
   setRequestLocale(locale)
   const t = await getTranslations('HelpPage')
 
-  const faqs = [
-    { q: t('faq.0.q'), a: t('faq.0.a') },
-    { q: t('faq.1.q'), a: t('faq.1.a') },
-    { q: t('faq.2.q'), a: t('faq.2.a') },
-    { q: t('faq.3.q'), a: t('faq.3.a') },
-    { q: t('faq.4.q'), a: t('faq.4.a') },
-    { q: t('faq.5.q'), a: t('faq.5.a') },
-    { q: t('faq.6.q'), a: t('faq.6.a') },
-    { q: t('faq.7.q'), a: t('faq.7.a') },
-  ]
+  const faqs = Array.from({ length: 10 }, (_, i) => ({
+    q: t(`faq.${i}.q`),
+    a: t(`faq.${i}.a`),
+  }))
 
   return (
     <>
@@ -64,21 +58,21 @@ export default async function HelpPage({
       {/* Header */}
       <SectionWrapper className="pb-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h1 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="mb-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
             {t('title')}
           </h1>
-          <p className="text-lg text-muted-foreground">{t('subtitle')}</p>
+          <p className="text-lg text-muted-foreground/70">{t('subtitle')}</p>
         </div>
       </SectionWrapper>
 
-      {/* FAQ */}
+      {/* Usage Guide (now includes natural language install) */}
       <SectionWrapper>
-        <FaqSection faqs={faqs} />
+        <UsageGuide />
       </SectionWrapper>
 
-      {/* Usage Guide */}
-      <SectionWrapper className="bg-muted/30">
-        <UsageGuide />
+      {/* FAQ */}
+      <SectionWrapper className="bg-muted/20">
+        <FaqSection faqs={faqs} />
       </SectionWrapper>
 
       {/* Shortcuts */}
